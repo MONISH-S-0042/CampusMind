@@ -4,3 +4,10 @@ from sqlalchemy.orm import sessionmaker
 db_url="postgresql://postgres:root@localhost:5432/campusmind"
 engine=create_engine(db_url)
 session = sessionmaker(autoflush=False,bind=engine)
+
+def get_db():
+    db=session()
+    try:
+        yield db
+    finally:
+        db.close()

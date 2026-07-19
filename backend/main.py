@@ -1,16 +1,11 @@
 from fastapi import Depends, FastAPI
-from app.db.database import session, engine
+from app.db.database import engine, get_db
 from app.db.models import Base, User
 from sqlalchemy.orm import Session
-
+from app.services.authentication import auth
 app=FastAPI()
 Base.metadata.create_all(bind=engine)
-def get_db():
-    db=session()
-    try:
-        yield db
-    finally:
-        db.close()
+app.include_router(auth.router, prefix="/api/auth", tags=["jwt"])
 
 @app.get("/")
 def home():
