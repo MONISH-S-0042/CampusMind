@@ -1,0 +1,16 @@
+langchain
+pypdf
+langchain-community
+langchain-classic
+langgraph
+langchain-openai
+langchain-google-genai
+langchain-huggingface
+langchain-groq
+chromadb
+sqlalchemy
+fastapi
+python-jose
+pwdlib
+pwdlib[argon2]
+psycopg2
