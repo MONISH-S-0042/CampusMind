@@ -1,10 +1,12 @@
-import os
+from typing import List
+
+from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from pathlib import Path
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from backend.app.db.database import session
-from backend.app.db.models import Document
+from app.db.database import session
+from app.db.models import Document
 
 class DocumentLoader:
     
@@ -42,6 +44,7 @@ class DocumentLoader:
         return all_documents
     
     def _is_document_available(self,file_path:Path):
+        return False
         try:
             file = self.db.query(Document).filter(Document.file_path == str(file_path)).first()
             if not file:
@@ -68,7 +71,21 @@ class DocumentLoader:
             print(f"Error while adding log of {file_path.name} to database :{e}")
             self.db.rollback()
         
-db=session()
-doc_loader = DocumentLoader("backend/app/RAG/data",db)
-documents = doc_loader.load_documents()
-db.close()
+        
+        
+        
+class DocumentSplitter:
+    
+    def __init__(self,chunk_size:int, chunk_overlap:int):
+        self.chunk_size=chunk_size
+        self.chunk_overlap=chunk_overlap
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            length_function=len,
+            separators=["\n\n","\n"," ",""]
+        )
+    
+    def split_documents(self,documents:List[Document]):
+        return self.text_splitter.split_documents(documents)
+
