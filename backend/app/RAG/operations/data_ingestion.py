@@ -1,18 +1,17 @@
 from sqlalchemy.orm import Session
 
 from app.RAG.operations.document_loader import DocumentLoader, DocumentSplitter
-from app.RAG.operations.embedding_manager import EmbeddingManager
+from app.RAG.operations.embedding_manager import get_embedding_manager
 from app.RAG.operations.vectore_store import get_vector_store
 
 class DataIngestion:
     
-    def __init__(self,db:Session, dir_path:str="app/RAG/data", embedding_model:str = "all-MiniLM-L6-v2"):
+    def __init__(self,db:Session, dir_path:str="app/RAG/data"):
         self.db = db
         self.dir_path=dir_path
-        self.embedding_model=embedding_model
         self.document_loader = DocumentLoader(dir_path, db)
         self.document_splitter = DocumentSplitter(600,200)
-        self.embedding_manager = EmbeddingManager(model_name=embedding_model)
+        self.embedding_manager = get_embedding_manager()
         self.vector_store = get_vector_store()
     
     def ingest_data(self):

@@ -27,3 +27,8 @@ class EmbeddingManager:
         embeddings = self.model.encode(document_chunk_texts, show_progress_bar=True)
         print(f"Generated embeddings with shape: {embeddings.shape}")
         return embeddings
+
+embedding_manager = EmbeddingManager()
+
+def get_embedding_manager():
+    return embedding_manager
