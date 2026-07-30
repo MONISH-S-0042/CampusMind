@@ -1,3 +1,5 @@
 .env
 myenv/
 __pycache__
+pdf_files/
+vector_store/

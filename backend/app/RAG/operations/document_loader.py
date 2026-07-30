@@ -19,7 +19,6 @@ class DocumentLoader:
         print("Executing...")
         #Loading pdf files
         pdf_files = list(self.dir_path.glob("**/*.pdf"))
-        print(pdf_files)
         for pdf_file in pdf_files:
             print(f"Processing {pdf_file.name} file....")
             if self._is_document_available(pdf_file):
@@ -44,7 +43,6 @@ class DocumentLoader:
         return all_documents
     
     def _is_document_available(self,file_path:Path):
-        return False
         try:
             file = self.db.query(Document).filter(Document.file_path == str(file_path)).first()
             if not file:
