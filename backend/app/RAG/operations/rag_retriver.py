@@ -10,8 +10,9 @@ class RAGRetriver:
     def __init__(self, vector_store:VectorStore, embedding_manager: EmbeddingManager):
         self.vector_store = vector_store
         self.embedding_manager = embedding_manager
+        print(self.vector_store.collection.metadata)
     
-    def retrive(self,query:str, top_k = 5, score_threshold:float = 0.6)->List[Dict[str,Any]]:
+    def retrive(self,query:str, top_k = 5, score_threshold:float = 0.2)->List[Dict[str,Any]]:
         query_embeddings = self.embedding_manager.generate_embeddings([query])[0]
         
         try:

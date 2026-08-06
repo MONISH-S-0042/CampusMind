@@ -20,8 +20,7 @@ class VectorStore:
             
             self.collection = self.client.get_or_create_collection(
                 name = self.collection_name,
-                metadata={"description":"stores the regulation files"}   
-            )
+                metadata={"description":"stores the regulation files", "hnsw:space": "cosine"})
             print(f"Vector store initialized. Collection {self.collection_name}")
             print(f"Existing document count in {self.collection_name}: {self.collection.count()}")
             
