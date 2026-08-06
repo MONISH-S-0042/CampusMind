@@ -57,7 +57,6 @@ class RetrivalPipeline:
     def process_query(self,query:str, top_k:int=5):
         context,sources,confidence = self._retrive(query,top_k)
         prompt = self._create_prompt(query, context)
-        print(context)
         try:
             response = self.llm.invoke(prompt)
             
