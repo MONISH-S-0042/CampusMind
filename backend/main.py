@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.services.authentication import auth
 from app.RAG.operations.data_ingestion import DataIngestion
 from app.RAG.operations.vectore_store import get_vector_store
+from app.RAG.operations.retrival_pipeline import get_retrival_pipeleine
 app=FastAPI()
 Base.metadata.create_all(bind=engine)
 app.include_router(auth.router, prefix="/api/auth", tags=["jwt"])
@@ -26,3 +27,9 @@ def chunks(db:Session = Depends(get_db)):
     data_ingester.ingest_data()
     store = get_vector_store()
     return {"count":store.collection.count()}
+
+@app.get("/query/{val}")
+def get_response(val:str):
+    retriver = get_retrival_pipeleine()
+    response = retriver.process_query(query=val, top_k=10)
+    return response
