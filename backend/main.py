@@ -3,12 +3,16 @@ from app.db.database import engine, get_db
 from app.db.models import Base, User
 from sqlalchemy.orm import Session
 from app.services.authentication import auth
+from app.services.chat import get_chat
+from app.services.chat import message
 from app.RAG.operations.data_ingestion import DataIngestion
 from app.RAG.operations.vectore_store import get_vector_store
 from app.RAG.operations.retrival_pipeline import get_retrival_pipeleine
 app=FastAPI()
 Base.metadata.create_all(bind=engine)
 app.include_router(auth.router, prefix="/api/auth", tags=["jwt"])
+app.include_router(get_chat.router, prefix="/api/chat", tags=["jwt"])
+app.include_router(message.router, prefix="/api/chat", tags=["jwt"])
 
 @app.get("/")
 def home():

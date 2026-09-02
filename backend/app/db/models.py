@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
@@ -8,7 +8,27 @@ class User(Base):
     id=Column(Integer,primary_key=True, index=True)
     username=Column(String,nullable=False, unique= True)
     hashed_password=Column(String,nullable=False)
+    chats = relationship("Chat", back_populates="user")
     
+class Chat(Base):
+    __tablename__="Chat"
+    id=Column(Integer,primary_key=True, index=True)
+    user_id=Column(Integer, ForeignKey("User.id"),nullable=False)
+    title=Column(String)
+    created_at=Column(DateTime,nullable=False)
+    updated_at=Column(DateTime,nullable=False)
+    user = relationship("User", back_populates="chats")
+    messages = relationship("Message", back_populates="chat")
+    
+class Message(Base):
+    __tablename__="Message"
+    id=Column(Integer,primary_key=True,index=True)
+    chat_id=Column(Integer, ForeignKey("Chat.id"),nullable=False)
+    role=Column(String,nullable=False) #User or AI
+    content=Column(String)
+    created_at=Column(DateTime)
+    chat = relationship("Chat", back_populates="messages")
+
 class Document(Base):
     __tablename__="Document"
     id=Column(Integer, primary_key=True,index=True)
