@@ -14,7 +14,7 @@ class EmbeddingManager:
     def _load_model(self):
         try:
             print(f"Loading embedding model: {self.model_name}")
-            self.model = SentenceTransformer(self.model_name)
+            self.model = SentenceTransformer(self.model_name,local_files_only=True) 
             print(f"Successfully loaded the embedding model with dimensions : {self.model.get_embedding_dimension()}")
         except Exception as e:
             print(f"Error loading model: {e}")
