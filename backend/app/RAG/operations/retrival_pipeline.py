@@ -36,17 +36,19 @@ class RetrivalPipeline:
         
         return (context, sources,confidence)
     
-    def _create_prompt(self,query:str, context:str)->str:
+    def _create_prompt(self,query:str, context:str, sources)->str:
         prompt = f"""You are CampusMind, an AI assistant for VIT students.
 
                     Answer ONLY using the provided context.If it is a query too specific answer that first else explain clearly
 
                     If the answer cannot be found in the context,
-                    return "Not Found in Documents".
+                    return only "Not Found in Documents".
+                    if only found then Add file source to top of response text
 
                     Context:
                     {context}
-
+                    Sources:
+                    {[source.get('source') for source in sources]}
                     Question:
                     {query}
 
@@ -55,12 +57,12 @@ class RetrivalPipeline:
         
     def process_query(self,query:str, top_k:int=5):
         context,sources,confidence = self._retrive(query,top_k)
-        prompt = self._create_prompt(query, context)
+        prompt = self._create_prompt(query, context, sources)
         try:
             response = self.llm.invoke(prompt)
             
             output = {
-                "answer":response.content,
+                "answer":response.text,
                 "source":sources,
                 "confidence":confidence
             }

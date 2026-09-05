@@ -11,6 +11,7 @@ from langchain.chat_models import init_chat_model
 from app.RAG.operations.retrival_pipeline import get_retrival_pipeleine
 load_dotenv()
 
+os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY")
 
 
@@ -63,10 +64,10 @@ def RAG_tool(state:State):
     """
     retriver = get_retrival_pipeleine()
     response = retriver.process_query(state['refined_query'], top_k=10)
-    return {'tool_response':response.get("answer")[0].get("text")}
+    return {'tool_response':response.get("answer")}
 
 
-llm = get_chat_bot("groq:openai/gpt-oss-20b") 
+llm = get_chat_bot("google_genai:gemini-3.5-flash-lite") 
 structured_agent = llm.with_structured_output(IntentRespone,method='json_mode')
 
 def summarize_conversation(state:State):
@@ -93,7 +94,7 @@ def classify_intent(state: State):
         "remainder_time should be an ISO datetime string, or null if not mentioned. "
         "If any doubt is related to academics(VIT)/hostels/mess/examinations then classify it as RAG."
     ))
-    result = structured_agent.invoke([system_prompt] +[f"Earlier conversation summary:{state['summary']}"]+state['messages'])
+    result = structured_agent.invoke([system_prompt] +[f"Earlier conversation summary:{state.get('summary','No summary available')}"]+state['messages'])
     print(result)
     data ={
         "intent": result["intent"],
@@ -115,8 +116,9 @@ def chatbot(state:State):
     system_prompt = SystemMessage(content=(
         "You are a helpful assistant for VIT students. Assume every HumanMessage query is related to VIT. "
         "Answer as accurately and helpfully as you can based only on previous context if they contains the answer else using your own knowledge."
+        "Important Note: Include the source of your answer(From previous context or Web Search appropriately) at the start of the answer"
     ))
-    return {"messages":[llm.invoke([system_prompt]+[f"Earlier conversation summary:{state['summary']}"]+state['messages'])],"tool_response": ""}
+    return {"messages":[llm.invoke([system_prompt]+[f"Earlier conversation summary:{state.get('summary','No summary available')}"]+state['messages'])],"tool_response": ""}
 
 
 
@@ -153,4 +155,4 @@ def invoke_graph(query:str,user_id,chat_id):
         }
     }
     response = graph.invoke({"messages":query},config=config)
-    return response['messages'][-1].content
+    return response['messages'][-1].text
