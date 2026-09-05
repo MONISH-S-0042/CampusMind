@@ -15,3 +15,7 @@ pwdlib
 pwdlib[argon2]
 psycopg2
 sentence-transformers
+langgraph-checkpoint-postgres
+psycopg2[binary]
+psycopg
+psycopg[binary]

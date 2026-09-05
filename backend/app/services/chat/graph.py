@@ -9,7 +9,6 @@ from typing_extensions import TypedDict, Annotated
 import os
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
-
 from app.RAG.operations.retrival_pipeline import get_retrival_pipeleine
 load_dotenv()
 
@@ -41,7 +40,6 @@ class IntentRespone(TypedDict):
     refined_query: Annotated[str, ..., "Refine the query incase the intent is to query RAG without changing the context"]
     remainder_data: RemainderData
 
-graph_builder = StateGraph(State)
 
 def get_chat_bot(llm_name:str):
     llm = init_chat_model(model=llm_name)
@@ -107,6 +105,10 @@ def chatbot(state:State):
     ))
     return {"messages":[llm.invoke([system_prompt]+state['messages'])],"tool_response": ""}
 
+
+
+graph_builder = StateGraph(State)
+
 graph_builder.add_node("intent_classifier",classify_intent)
 graph_builder.add_node("RAG",RAG_tool)
 graph_builder.add_node("remainder",remainder_tool)
@@ -127,8 +129,7 @@ graph_builder.add_edge("remainder","chatbot")
 graph_builder.add_edge("chatbot",END)
 
 
-memory = MemorySaver()
-graph = graph_builder.compile(checkpointer=memory)
+graph = None
 
 def invoke_graph(query:str,user_id,chat_id):
     config = {

@@ -1,5 +1,6 @@
 from fastapi import Depends, FastAPI
-from app.db.database import engine, get_db
+from contextlib import asynccontextmanager
+from app.db.database import engine, get_db, db_url
 from app.db.models import Base, User
 from sqlalchemy.orm import Session
 from app.services.authentication import auth
@@ -8,8 +9,21 @@ from app.services.chat import message
 from app.RAG.operations.data_ingestion import DataIngestion
 from app.RAG.operations.vectore_store import get_vector_store
 from app.RAG.operations.retrival_pipeline import get_retrival_pipeleine
-app=FastAPI()
+from app.services.chat import graph as graph_module
+from langgraph.checkpoint.postgres import PostgresSaver
+
 Base.metadata.create_all(bind=engine)
+
+
+#This run only once during the startup(before yield) and once during shutdown(after yield) of server
+@asynccontextmanager
+async def lifespan(app:FastAPI):
+    with PostgresSaver.from_conn_string(db_url) as checkpointer:
+        checkpointer.setup()
+        graph_module.graph = graph_module.graph_builder.compile(checkpointer=checkpointer)
+        yield
+
+app=FastAPI(lifespan=lifespan)
 app.include_router(auth.router, prefix="/api/auth", tags=["jwt"])
 app.include_router(get_chat.router, prefix="/api/chat", tags=["jwt"])
 app.include_router(message.router, prefix="/api/chat", tags=["jwt"])
