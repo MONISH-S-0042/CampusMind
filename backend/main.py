@@ -9,7 +9,7 @@ from app.services.chat import message
 from app.RAG.operations.data_ingestion import DataIngestion
 from app.RAG.operations.vectore_store import get_vector_store
 from app.RAG.operations.retrival_pipeline import get_retrival_pipeleine
-from app.services.chat import graph as graph_module
+from app.services import graph as graph_module
 from langgraph.checkpoint.postgres import PostgresSaver
 
 Base.metadata.create_all(bind=engine)

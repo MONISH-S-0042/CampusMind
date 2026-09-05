@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -9,6 +9,7 @@ class User(Base):
     username=Column(String,nullable=False, unique= True)
     hashed_password=Column(String,nullable=False)
     chats = relationship("Chat", back_populates="user")
+    remainders = relationship("Remainder", back_populates="user")
     
 class Chat(Base):
     __tablename__="Chat"
@@ -36,3 +37,15 @@ class Document(Base):
     file_type=Column(String,nullable=False)
     last_updated=Column(DateTime, nullable=False)
     file_path=Column(String,nullable=False,unique=True)
+    
+    
+class Remainder(Base):
+    __tablename__="Remainder"
+    id=Column(Integer,primary_key=True,index=True)
+    remainder_time=Column(DateTime)
+    course_name=Column(String)
+    is_active=Column(Boolean)
+    event_type=Column(String)
+    extra_info=Column(String)
+    user_id = Column(Integer,ForeignKey("User.id"),nullable=False)
+    user = relationship("User", back_populates="remainders")

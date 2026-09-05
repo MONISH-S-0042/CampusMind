@@ -19,3 +19,4 @@ langgraph-checkpoint-postgres
 psycopg2[binary]
 psycopg
 psycopg[binary]
+dateparser

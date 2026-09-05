@@ -6,7 +6,7 @@ from app.db.models import Message, Chat
 from app.services.authentication.auth import verify_token
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.services.chat.graph import invoke_graph
+from app.services.graph import invoke_graph
 
 router = APIRouter()
 
