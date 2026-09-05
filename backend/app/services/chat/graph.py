@@ -1,10 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from langchain_core.messages import AIMessage,SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage,SystemMessage, RemoveMessage
 from langgraph.graph import StateGraph,START,END
 from langgraph.graph.message import add_messages
-from langgraph.checkpoint.memory import MemorySaver
 from typing_extensions import TypedDict, Annotated
 import os
 from dotenv import load_dotenv
@@ -28,6 +27,7 @@ class RemainderData(TypedDict):
     remainder_time: Optional[datetime]
 
 class State(TypedDict):
+    summary:str
     messages: Annotated[list, add_messages]
     intent: Annotated[str, ..., "Should indicate the intent of user query only from [RAG,remainder,general]"]
     refined_query: Annotated[str, ..., "Refine the query incase the intent is to query RAG without changing the context"]
@@ -69,6 +69,18 @@ def RAG_tool(state:State):
 llm = get_chat_bot("groq:openai/gpt-oss-20b") 
 structured_agent = llm.with_structured_output(IntentRespone,method='json_mode')
 
+def summarize_conversation(state:State):
+    if(len(state['messages'])<20):
+        return {}
+    summary = state.get('summary','')
+    prompt = (
+        f"Extend this summary with the new messages: {summary}" if summary
+        else "Summarize the conversation so far."
+    )
+    response = llm.invoke(state["messages"][:-6] + [HumanMessage(content=prompt)])
+    delete_messages = [RemoveMessage(id=m.id) for m in state['messages'][:-6]]
+    return {"summary":response.content,"messages":delete_messages}
+
 def classify_intent(state: State):
     system_prompt = SystemMessage(content=(
         "You are an intent classifier, assume every query is related to VIT. Respond only with a JSON object with these keys: "
@@ -81,13 +93,14 @@ def classify_intent(state: State):
         "remainder_time should be an ISO datetime string, or null if not mentioned. "
         "If any doubt is related to academics(VIT)/hostels/mess/examinations then classify it as RAG."
     ))
-    result = structured_agent.invoke([system_prompt] + state['messages'])
+    result = structured_agent.invoke([system_prompt] +[f"Earlier conversation summary:{state['summary']}"]+state['messages'])
     print(result)
-    return {
+    data ={
         "intent": result["intent"],
         "refined_query": result["refined_query"],
         "remainder_data": result["remainder_data"],
     }
+    return data
 
 def route_by_intent(state:State):
     if(state['intent'] == 'RAG'):
@@ -101,9 +114,9 @@ def chatbot(state:State):
         return {"messages":[AIMessage(content=state['tool_response'])]}
     system_prompt = SystemMessage(content=(
         "You are a helpful assistant for VIT students. Assume every HumanMessage query is related to VIT. "
-        "Answer as accurately and helpfully as you can based on previous context if relevant or using your own knowledge."
+        "Answer as accurately and helpfully as you can based only on previous context if they contains the answer else using your own knowledge."
     ))
-    return {"messages":[llm.invoke([system_prompt]+state['messages'])],"tool_response": ""}
+    return {"messages":[llm.invoke([system_prompt]+[f"Earlier conversation summary:{state['summary']}"]+state['messages'])],"tool_response": ""}
 
 
 
@@ -113,8 +126,10 @@ graph_builder.add_node("intent_classifier",classify_intent)
 graph_builder.add_node("RAG",RAG_tool)
 graph_builder.add_node("remainder",remainder_tool)
 graph_builder.add_node("chatbot",chatbot)
+graph_builder.add_node("summarizer",summarize_conversation)
 
-graph_builder.add_edge(START,"intent_classifier")
+graph_builder.add_edge(START,"summarizer")
+graph_builder.add_edge("summarizer","intent_classifier")
 graph_builder.add_conditional_edges(
     "intent_classifier",
     route_by_intent,
