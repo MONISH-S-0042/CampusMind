@@ -25,7 +25,7 @@ def verify_password(plain_password: str, hashed_password:str):
 #TO GENERATE JWT TOKEN
 def create_token(data:dict):
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=120)
     to_encode.update({
         "exp":expire
     })

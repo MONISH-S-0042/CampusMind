@@ -39,11 +39,10 @@ class RetrivalPipeline:
     def _create_prompt(self,query:str, context:str)->str:
         prompt = f"""You are CampusMind, an AI assistant for VIT students.
 
-                    Answer ONLY using the provided context. Explain clearly
+                    Answer ONLY using the provided context.If it is a query too specific answer that first else explain clearly
 
                     If the answer cannot be found in the context,
-                    say that you could not find it in the official
-                    documents.
+                    return "Not Found in Documents".
 
                     Context:
                     {context}
