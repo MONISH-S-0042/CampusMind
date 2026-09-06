@@ -1,14 +1,14 @@
 import re
-from datetime import datetime, timezone
-
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from langgraph.types import Command, interrupt
 from dotenv import load_dotenv
 from app.services.langgraph_model import State
 from app.db.models import Remainder
 from app.db.database import session
+from app.services.utilities.time import IST, is_past_date, to_local_time
 load_dotenv()
 import dateparser
-
 CANCEL_PHRASES = {"cancel", "stop", "nevermind", "never mind", "quit", "exit", "abort", "cancel remainder"}
 
 
@@ -18,14 +18,9 @@ def is_cancel(answer) -> bool:
 
 def cancelled_command():
     return Command(
-        goto="chatbot",
+        goto="remainder_end",
         update={
             "tool_response": "Okay, I've cancelled the reminder — nothing was saved.",
-            "remainder_data": {
-                "operation": None, "course_name": None, "time_mentioned": None,
-                "remainder_time": None, "event_type": None, "extra_info": None,
-                "retry_message": None,
-            },
         },
     )
 
@@ -37,20 +32,12 @@ def clean_weekday_modifiers(text: str) -> str:
         flags=re.IGNORECASE
     )
 
-
 def check_time(state: State):
     """Checks the time field before creating a remainder
 
     Returns:
         Command: Updates 'remainder_data' and routes explicitly to the next node.
     """
-    def to_aware_utc(dt: datetime) -> datetime:
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
-
-    def is_past_date(date):
-        return to_aware_utc(date) <= datetime.now(timezone.utc)
 
     data = state['remainder_data']
 
@@ -63,9 +50,9 @@ def check_time(state: State):
         cleaned = clean_weekday_modifiers(str(answer))
         parsed = dateparser.parse(
             cleaned,
-            settings={'RELATIVE_BASE': datetime.now(), 'PREFER_DATES_FROM': 'future'}
+            settings={'RELATIVE_BASE': datetime.now(IST), 'PREFER_DATES_FROM': 'future'}
         )
-        parsed = to_aware_utc(parsed) if parsed is not None else None
+        parsed = to_local_time(parsed) if parsed is not None else None
         if parsed is None:
             data['retry_message'] = f"I could not understand {answer} as a date/time, kindly rephrase it (or 'cancel' to stop)"
             return Command(goto="check_time", update={"remainder_data": data})
@@ -126,7 +113,7 @@ def confirm_remainder(state: State):
     data = state['remainder_data']
     summary = (
         f"Please confirm: {data.get('event_type') or 'remainder'} for {data['course_name']} "
-        f"at {data['remainder_time']}. Extra info: {data.get('extra_info') or 'none'}. "
+        f"at {to_local_time(data['remainder_time']).strftime("%d %B %Y at %I:%M %p")}. Extra info: {data.get('extra_info') or 'none'}. "
         "Confirm? (yes/no, or 'cancel' to stop)"
     )
     answer = interrupt(summary)

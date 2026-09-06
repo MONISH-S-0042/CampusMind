@@ -42,7 +42,7 @@ class Document(Base):
 class Remainder(Base):
     __tablename__="Remainder"
     id=Column(Integer,primary_key=True,index=True)
-    remainder_time=Column(DateTime)
+    remainder_time=Column(DateTime(timezone=True))
     course_name=Column(String)
     is_active=Column(Boolean)
     event_type=Column(String)

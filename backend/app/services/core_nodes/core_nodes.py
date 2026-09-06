@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 import dateparser
 from langchain_core.messages import AIMessage, HumanMessage,SystemMessage, RemoveMessage
@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from app.RAG.operations.retrival_pipeline import get_retrival_pipeleine
 from app.services.langgraph_model import IntentRespone, State
+from app.services.utilities.time import IST, to_local_time
 load_dotenv()
-
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY")
 
@@ -45,7 +45,7 @@ def summarize_conversation(state:State):
     return {"summary":response.content,"messages":delete_messages}
 
 def classify_intent(state: State):
-    now = datetime.now().isoformat()
+    now = datetime.now(IST).isoformat()
     system_prompt = SystemMessage(content=(
         "You are an intent classifier for a VIT student assistant. "
         f"The current date and time is {now}. "
@@ -100,10 +100,7 @@ def classify_intent(state: State):
         "Must NOT contain the course name or any time/date reference — those belong in their own fields. "
         "Null if nothing extra was given."
     ))
-    def to_aware_utc(dt: datetime) -> datetime:
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+    
     
     recent = state['messages'][-2:]  
     summary_message = HumanMessage(content=f"Earlier conversation summary: {state.get('summary', 'No summary available')}")
@@ -112,10 +109,15 @@ def classify_intent(state: State):
     remainder_data = result["remainder_data"]
     raw_time = remainder_data.get("remainder_time")
     if isinstance(raw_time, str):
-        parsed = dateparser.parse(raw_time)
-        remainder_data["remainder_time"] = to_aware_utc(parsed) if parsed else None
+        parsed = dateparser.parse(
+            raw_time, 
+            settings={
+                "RELATIVE_BASE": datetime.now(IST),
+                "PREFER_DATES_FROM": "future"
+            })
+        remainder_data["remainder_time"] = to_local_time(parsed) if parsed else None
     elif raw_time is not None:
-        remainder_data["remainder_time"] = to_aware_utc(raw_time)
+        remainder_data["remainder_time"] = to_local_time(raw_time)
 
     time_mentioned = remainder_data.get("time_mentioned", True)
     if not time_mentioned:
@@ -133,6 +135,17 @@ def route_by_intent(state:State):
         return "remainder"
     return "general"
 
+def remainder_operation(state:State):
+    print("Entering remainder flow...")
+    return {}
+def remainder_end(state:State):
+    print("Exiting Remainder Flow")
+    return {"remainder_data": {
+                    "operation": None, "course_name": None, "time_mentioned": None,
+                    "remainder_time": None, "event_type": None, "extra_info": None,
+                    "retry_message": None,
+    }}
+    
 def chatbot(state:State):
     if state['intent']!='general' and state['tool_response']!='Not Found in Documents':
         return {"messages":[AIMessage(content=state['tool_response'])]}
