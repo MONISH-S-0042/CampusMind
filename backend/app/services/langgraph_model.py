@@ -12,6 +12,9 @@ def merge_dict(old: dict | None, new: dict | None) -> dict:
         return old
     return {**old, **new}
 
+def last_val(old:str ,new:str)->str:
+    return new
+
 class RemainderData(TypedDict):
     operation: Annotated[str, ..., "One of 'view','create', 'update', 'delete' — what the user wants done with the remainder"]
     course_name: Annotated[str, ..., "Name of the course for which remainder has to be created, updated, or deleted"]
@@ -26,7 +29,7 @@ class State(TypedDict):
     intent: Annotated[str, ..., "Should indicate the intent of user query only from [RAG,remainder,general]"]
     refined_query: Annotated[str, ..., "Refine the query incase the intent is to query RAG without changing the context"]
     remainder_data: Annotated[RemainderData, merge_dict]
-    tool_response: str
+    tool_response: Annotated[str,last_val]
     user_id: int
     chat_id: int
 

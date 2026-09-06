@@ -48,26 +48,7 @@ graph_builder.add_edge("chatbot",END)
 
 
 #Create remainder flow
-graph_builder.add_edge("check_time","check_course")
-graph_builder.add_edge("check_course","check_extra")
-graph_builder.add_edge("check_extra","confirm_remainder")
-graph_builder.add_conditional_edges(
-    "confirm_remainder",
-    lambda state:"create_remainder" if state['tool_response']=='confirmed' else "ask_correction",
-    {
-        "create_remainder":"create_remainder",
-        "ask_correction":"ask_correction"
-    }
-)
-graph_builder.add_conditional_edges(
-    "ask_correction",
-    lambda state:state['tool_response'],
-    {
-        "check_time":"check_time",
-        "check_course":"check_course",
-        "check_extra":"check_extra"
-    }
-)
+#For create remainder flow, since direct jumping is needed along with HITL, we created the flow in that function
 graph_builder.add_edge("create_remainder","chatbot")
 
 graph = None
@@ -79,6 +60,9 @@ def invoke_graph(query:str,user_id,chat_id):
         }
     }
     state = graph.get_state(config)
+    print(state.next)
+    for task in state.tasks:
+        print(task.name, task.interrupts)
     if state.next:
         response = graph.invoke(Command(resume=query),config=config)
     else:

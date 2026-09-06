@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
+import dateparser
 from langchain_core.messages import AIMessage, HumanMessage,SystemMessage, RemoveMessage
 import os
 from dotenv import load_dotenv
@@ -99,14 +100,30 @@ def classify_intent(state: State):
         "Must NOT contain the course name or any time/date reference — those belong in their own fields. "
         "Null if nothing extra was given."
     ))
+    def to_aware_utc(dt: datetime) -> datetime:
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    
     recent = state['messages'][-2:]  
     summary_message = HumanMessage(content=f"Earlier conversation summary: {state.get('summary', 'No summary available')}")
     result = structured_agent.invoke([system_prompt] + [summary_message] + recent)
     print(result)
+    remainder_data = result["remainder_data"]
+    raw_time = remainder_data.get("remainder_time")
+    if isinstance(raw_time, str):
+        parsed = dateparser.parse(raw_time)
+        remainder_data["remainder_time"] = to_aware_utc(parsed) if parsed else None
+    elif raw_time is not None:
+        remainder_data["remainder_time"] = to_aware_utc(raw_time)
+
+    time_mentioned = remainder_data.get("time_mentioned", True)
+    if not time_mentioned:
+        remainder_data["remainder_time"] = None
     return {
         "intent": result["intent"],
         "refined_query": result["refined_query"],
-        "remainder_data": result["remainder_data"],
+        "remainder_data": remainder_data,
     }
 
 def route_by_intent(state:State):
