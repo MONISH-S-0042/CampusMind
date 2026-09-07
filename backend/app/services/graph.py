@@ -5,6 +5,8 @@ from app.services.langgraph_model import State
 from app.services.remainder.create_remainder import check_course, check_extra, check_time, confirm_remainder, ask_correction, create_remainder
 from app.services.core_nodes.core_nodes import RAG_tool, chatbot, classify_intent, remainder_end, route_by_intent, summarize_conversation,remainder_operation
 from app.services.remainder.view_remainder import get_remainders
+from app.services.remainder.update_remainder import get_remainder_tochange, update_remainder
+from app.services.remainder.delete_remainder import delete_remainder
 load_dotenv()
 
 graph_builder = StateGraph(State)
@@ -27,6 +29,9 @@ graph_builder.add_node("check_extra", check_extra)
 graph_builder.add_node("confirm_remainder", confirm_remainder)
 graph_builder.add_node("ask_correction", ask_correction)
 graph_builder.add_node("create_remainder", create_remainder)
+graph_builder.add_node("start_get_remainder",get_remainder_tochange)
+graph_builder.add_node("update_remainder",update_remainder)
+graph_builder.add_node("delete_remainder",delete_remainder)
 
 #Core flow
 graph_builder.add_edge(START,"summarizer")
@@ -45,10 +50,14 @@ graph_builder.add_conditional_edges(
     lambda state:state['remainder_data']['operation'],
     {
         "view":"view_remainder",
-        "create":"check_time"
+        "create":"check_time",
+        "update":"start_get_remainder",
+        "delete":"start_get_remainder"
     }
 )
 graph_builder.add_edge("view_remainder","remainder_end")
+graph_builder.add_edge("update_remainder","remainder_end")
+
 
 #Create remainder flow
 #For create remainder flow, since direct jumping is needed along with HITL, we created the flow in that function

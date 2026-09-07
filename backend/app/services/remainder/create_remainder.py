@@ -7,22 +7,9 @@ from app.services.langgraph_model import State
 from app.db.models import Remainder
 from app.db.database import session
 from app.services.utilities.time import IST, is_past_date, to_local_time
+from app.services.utilities.cancel_remainder_operation import is_cancel, cancelled_command
 load_dotenv()
 import dateparser
-CANCEL_PHRASES = {"cancel", "stop", "nevermind", "never mind", "quit", "exit", "abort", "cancel remainder"}
-
-
-def is_cancel(answer) -> bool:
-    return str(answer).strip().lower() in CANCEL_PHRASES
-
-
-def cancelled_command():
-    return Command(
-        goto="remainder_end",
-        update={
-            "tool_response": "Okay, I've cancelled the reminder — nothing was saved.",
-        },
-    )
 
 def clean_weekday_modifiers(text: str) -> str:
     return re.sub(
@@ -45,7 +32,7 @@ def check_time(state: State):
         prompt = data.pop('retry_message', None) or "What time should this reminder be set for? (or 'cancel' to stop)"
         answer = interrupt(prompt)
         if is_cancel(answer):
-            return cancelled_command()
+            return cancelled_command("Okay, I've cancelled the operation.")
 
         cleaned = clean_weekday_modifiers(str(answer))
         parsed = dateparser.parse(
@@ -80,7 +67,7 @@ def check_course(state: State):
     if not data.get('course_name'):
         answer = interrupt("Which course is this remainder for? (or 'cancel' to stop)")
         if is_cancel(answer):
-            return cancelled_command()
+            return cancelled_command("Okay, I've cancelled the operation.")
         data['course_name'] = answer
     return Command(goto="check_extra", update={"remainder_data": data})
 
@@ -98,7 +85,7 @@ def check_extra(state: State):
             "or extra notes? Say 'skip' if none, or 'cancel' to stop."
         )
         if is_cancel(answer):
-            return cancelled_command()
+            return cancelled_command("Okay, I've cancelled the operation.")
         if str(answer).strip().lower() not in ("skip", "no", "none", ""):
             data['extra_info'] = answer
     return Command(goto="confirm_remainder", update={"remainder_data": data})
@@ -118,8 +105,10 @@ def confirm_remainder(state: State):
     )
     answer = interrupt(summary)
     if is_cancel(answer):
-        return cancelled_command()
+        return cancelled_command("Okay, I've cancelled the operation.")
     if str(answer).strip().lower() in ("yes", "y", "confirm", "confirmed"):
+        if state['remainder_data']['operation'] == 'update':
+            return Command(goto="update_remainder", update={"tool_response": "confirmed"})
         return Command(goto="create_remainder", update={"tool_response": "confirmed"})
     return Command(goto="ask_correction", update={"tool_response": "not_confirmed"})
 
@@ -132,7 +121,7 @@ def ask_correction(state: State):
     """
     answer = interrupt("What would you like to change — time, course, or the extra details? (or 'cancel' to stop)")
     if is_cancel(answer):
-        return cancelled_command()
+        return cancelled_command("Okay, I've cancelled the operation.")
 
     data = state['remainder_data']
     text = str(answer).strip().lower()
@@ -168,11 +157,11 @@ def create_remainder(state: State):
             Remainder.course_name == course_name,
             Remainder.remainder_time == remainder_time
         ).first():
-            return {'tool_response': f'Remainder already created for {course_name} at {remainder_time}'}
+            return {'tool_response': f'Remainder already created for {course_name} at {remainder_time.strftime('%d %B %Y at %I:%M %p')}'}
 
         db.add(remainder)
         db.commit()
         course_name = remainder.course_name
         remainder_time = remainder.remainder_time
 
-    return {'tool_response': f'Remainder created successfully for {course_name} at {remainder_time}'}
+    return {'tool_response': f'Remainder created successfully for {course_name} at {remainder_time.strftime('%d %B %Y at %I:%M %p')}'}
