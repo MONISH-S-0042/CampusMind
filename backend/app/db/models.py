@@ -1,5 +1,9 @@
+from datetime import datetime
+
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
+
+from app.services.utilities.time import IST
 
 Base = declarative_base()
 
@@ -44,8 +48,11 @@ class Remainder(Base):
     id=Column(Integer,primary_key=True,index=True)
     remainder_time=Column(DateTime(timezone=True))
     course_name=Column(String)
-    is_active=Column(Boolean)
+    is_active=Column(Boolean, default= True)
     event_type=Column(String)
     extra_info=Column(String)
+    status = Column(String,default="pending", nullable=False)
+    created_at = Column(DateTime(timezone=True),default=lambda: datetime.now(IST))
+    sent_at = Column(DateTime(timezone=True),nullable=True)
     user_id = Column(Integer,ForeignKey("User.id"),nullable=False)
     user = relationship("User", back_populates="remainders")

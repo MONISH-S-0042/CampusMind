@@ -73,6 +73,21 @@ class RetrivalPipeline:
             return ""
 
 
+    def get_context(self,query:str,top_k:int = 10):
+        context,sources,confidence = self._retrive(query,top_k)
+        prompt = f"""
+                    Context:
+                    {context if context else 'No context found'}
+                    Sources:
+                    {[source.get('source') for source in sources] if len(sources)>0 else 'No sources'}
+                    Confidence:
+                    {confidence if confidence else 'NIL'}
+                    Question asked in current turn:
+                    {query}
+
+                    Answer:"""
+        return prompt
+    
 def get_chat_bot(llm_name:str):
     llm = init_chat_model(model=llm_name)
     return llm

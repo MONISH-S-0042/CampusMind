@@ -107,7 +107,7 @@ def confirm_remainder(state: State):
     if is_cancel(answer):
         return cancelled_command("Okay, I've cancelled the operation.")
     if str(answer).strip().lower() in ("yes", "y", "confirm", "confirmed"):
-        if state['remainder_data']['operation'] == 'update':
+        if state['remainder_data'].get('operation',None) == 'update':
             return Command(goto="update_remainder", update={"tool_response": "confirmed"})
         return Command(goto="create_remainder", update={"tool_response": "confirmed"})
     return Command(goto="ask_correction", update={"tool_response": "not_confirmed"})
@@ -145,7 +145,6 @@ def create_remainder(state: State):
     remainder = Remainder(
         remainder_time=state['remainder_data']['remainder_time'],
         course_name=state['remainder_data']['course_name'],
-        is_active=True,
         event_type=state['remainder_data']['event_type'],
         extra_info=state['remainder_data']['extra_info'],
         user_id=state['user_id']

@@ -11,9 +11,9 @@ def get_remainder_tochange(state:State):#Selects remainder for both delete and u
     data = []
     with session() as db:
         remainders = db.query(Remainder).filter(Remainder.user_id == state['user_id'])
-        if state['remainder_data']['course_name']:
+        if state['remainder_data'].get('course_name',None):
             remainders = remainders.filter(Remainder.course_name == state['remainder_data']['course_name'])
-        if state['remainder_data']['event_type']:
+        if state['remainder_data'].get('event_type',None):
             remainders = remainders.filter(Remainder.event_type == state['remainder_data']['event_type'])
         remainders = remainders.all()
         for i,r in enumerate(remainders):
@@ -30,7 +30,7 @@ def get_remainder_tochange(state:State):#Selects remainder for both delete and u
         selection = interrupt(prompt)
         if is_cancel(selection):
             return cancelled_command("Okay, I've cancelled the operation — nothing was updated.") 
-        is_delete = state['remainder_data']['operation'] == 'delete'
+        is_delete = state['remainder_data'].get('operation',None) == 'delete'
         raw_parts = [p.strip() for p in str(selection).replace(',', ' ').split() if p.strip()]
         try:
             indices = [int(p) for p in raw_parts]
@@ -43,11 +43,11 @@ def get_remainder_tochange(state:State):#Selects remainder for both delete and u
                 f"Kindly enter {'one or more values' if is_delete else 'a single value'} from 1 to {len(data)}\n" + "\n".join(data))
             return Command(goto='start_get_remainder',update={'remainder_data':state['remainder_data']})
     
-    if state['remainder_data']['operation'] == 'delete':
-        state['remainder_data']['delete_ids'] = [remainders[i - 1].id for i in indices]
+    if state['remainder_data'].get('operation',None) == 'delete':
+        state['remainder_data']['delete_ids'] = [remainders[i - 1].id for i in indices] if len(remainders)>1 else [remainders[0].id]
         return Command(goto='delete_remainder',update={'remainder_data':state['remainder_data']})
     
-    rem =  remainders[indices[0] - 1]
+    rem = remainders[0] if len(remainders)==1 else  remainders[indices[0] - 1]
     state['remainder_data']['course_name'] =  rem.course_name
     state['remainder_data']['event_type'] =  rem.event_type
     state['remainder_data']['update_id'] = rem.id
@@ -64,10 +64,10 @@ def update_remainder(state:State):
             return {'tool_response':"An error occured, Kindly retry (Remainder doesn't exist)"}
         
         prompt = f"Remainder for course updated from {old_remainder.course_name} at {old_remainder.remainder_time.strftime('%d %B %Y at %I:%M %p')}"
-        old_remainder.course_name = state['remainder_data']['course_name'] or old_remainder.course_name
-        old_remainder.remainder_time = state['remainder_data']['remainder_time'] or old_remainder.remainder_time
-        old_remainder.event_type = state['remainder_data']['event_type'] or old_remainder.event_type
-        old_remainder.extra_info = state['remainder_data']['extra_info'] or old_remainder.extra_info
+        old_remainder.course_name = state['remainder_data'].get('course_name',None) or old_remainder.course_name
+        old_remainder.remainder_time = state['remainder_data'].get('remainder_time',None) or old_remainder.remainder_time
+        old_remainder.event_type = state['remainder_data'].get('event_type',None) or old_remainder.event_type
+        old_remainder.extra_info = state['remainder_data'].get('extra_info',None) or old_remainder.extra_info
         try:
             db.commit()
             db.refresh(old_remainder)

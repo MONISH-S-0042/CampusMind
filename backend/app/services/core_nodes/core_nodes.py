@@ -24,8 +24,8 @@ def RAG_tool(state:State):
         dict: Updates 'tool_response' with the retrieved answer.
     """
     retriver = get_retrival_pipeleine()
-    response = retriver.process_query(state['refined_query'], top_k=10)
-    return {'tool_response':response.get("answer")}
+    response = retriver.get_context(state['refined_query'], top_k=10)
+    return {'tool_response':response}
 
 
 llm = get_chat_bot("google_genai:gemini-3.5-flash-lite") 
@@ -159,12 +159,42 @@ def remainder_end(state:State):
     }}
     
 def chatbot(state:State):
-    if state['intent']!='general' and state['tool_response']!='Not Found in Documents':
-        return {"messages":[AIMessage(content=state['tool_response'])]}
-    system_prompt = SystemMessage(content=(
-        "You are a helpful assistant for VIT students. Assume every HumanMessage query is related to VIT. "
-        "Answer as accurately and helpfully as you can based only on previous context if they contains the answer else using your own knowledge."
-        "Important Note: Include the source of your answer(From previous context or From Web Search appropriately) at the start of the answer"
-    ))
-    return {"messages":[llm.invoke([system_prompt]+[f"Earlier conversation summary:{state.get('summary','No summary available')}"]+state['messages'])],"tool_response": ""}
+    tool_response = state['tool_response']
+    summary = state.get('summary','No summary available')
+    system_prompt = SystemMessage(content=(f"""
+            You are a helpful assistant for VIT students.
+
+            Answer the user's latest message naturally and accurately.
+
+            You have access to:
+
+            1. Previous conversation
+            2. Conversation summary
+            3. The result/context produced by the current workflow
+
+            === CURRENT WORKFLOW RESULT ===
+
+            {tool_response if tool_response else "No workflow result available." + "Conversation intent is " + state['intent']}
+
+            === CONVERSATION SUMMARY ===
+
+            {summary}
+
+            IMPORTANT RULES:
+
+            - The CURRENT WORKFLOW RESULT is important information produced by
+            the current workflow.
+            - If it contains an answer or factual result relevant to the user's
+            current question, you MUST incorporate that information into your
+            final response.
+            - Do not contradict the CURRENT WORKFLOW RESULT.
+            - You may rephrase it naturally instead of copying it verbatim.
+            - If the CURRENT WORKFLOW RESULT contains sources, include those sources
+            apropriately in your responses, if no sources add where you get the responses from(not for remainder flow).
+            - Use previous conversation context when it is relevant to the
+            current question.
+            - Do not mention internal implementation details such as workflow,
+            state, tool_response, RAG, nodes, etc.
+            """))
+    return {"messages":[llm.invoke([system_prompt]+state['messages'])],"tool_response": ""}
 
