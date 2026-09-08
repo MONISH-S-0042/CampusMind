@@ -12,6 +12,8 @@ from app.RAG.operations.retrival_pipeline import get_retrival_pipeleine
 from app.services import graph as graph_module
 from langgraph.checkpoint.postgres import PostgresSaver
 
+from app.services.notification.scheduler import start_scheduler, stop_scheduler
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -20,8 +22,12 @@ Base.metadata.create_all(bind=engine)
 async def lifespan(app:FastAPI):
     with PostgresSaver.from_conn_string(db_url) as checkpointer:
         checkpointer.setup()
+        start_scheduler()
         graph_module.graph = graph_module.graph_builder.compile(checkpointer=checkpointer)
+        
         yield
+        
+        stop_scheduler()
 
 app=FastAPI(lifespan=lifespan)
 app.include_router(auth.router, prefix="/api/auth", tags=["jwt"])

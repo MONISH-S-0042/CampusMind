@@ -160,6 +160,9 @@ def remainder_end(state:State):
     
 def chatbot(state:State):
     tool_response = state['tool_response']
+    if state["intent"] == 'remainder' and state['tool_response'] is not None:
+         return {"messages":[AIMessage(content=tool_response)],"tool_response": ""}
+     
     summary = state.get('summary','No summary available')
     system_prompt = SystemMessage(content=(f"""
             You are a helpful assistant for VIT students.
@@ -174,7 +177,8 @@ def chatbot(state:State):
 
             === CURRENT WORKFLOW RESULT ===
 
-            {tool_response if tool_response else "No workflow result available." + "Conversation intent is " + state['intent']}
+            {tool_response if tool_response else "No workflow result available."} 
+            {"Conversation intent is " + state['intent']}
 
             === CONVERSATION SUMMARY ===
 

@@ -8,6 +8,7 @@ from app.db.models import Remainder
 from app.db.database import session
 from app.services.utilities.time import IST, is_past_date, to_local_time
 from app.services.utilities.cancel_remainder_operation import is_cancel, cancelled_command
+from app.services.notification.scheduler import schedule_remainder
 load_dotenv()
 import dateparser
 
@@ -160,6 +161,7 @@ def create_remainder(state: State):
 
         db.add(remainder)
         db.commit()
+        schedule_remainder(remainder)
         course_name = remainder.course_name
         remainder_time = remainder.remainder_time
 

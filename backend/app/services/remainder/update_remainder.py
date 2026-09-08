@@ -4,13 +4,14 @@ from app.db.models import Remainder
 from langgraph.types import Command, interrupt
 from app.db.database import session
 from app.services.utilities.cancel_remainder_operation import cancelled_command, is_cancel
+from app.services.notification.scheduler import schedule_remainder
 load_dotenv()
 
 
 def get_remainder_tochange(state:State):#Selects remainder for both delete and update
     data = []
     with session() as db:
-        remainders = db.query(Remainder).filter(Remainder.user_id == state['user_id'])
+        remainders = db.query(Remainder).filter(Remainder.user_id == state['user_id'],Remainder.is_active ==True)
         if state['remainder_data'].get('course_name',None):
             remainders = remainders.filter(Remainder.course_name == state['remainder_data']['course_name'])
         if state['remainder_data'].get('event_type',None):
@@ -19,7 +20,7 @@ def get_remainder_tochange(state:State):#Selects remainder for both delete and u
         for i,r in enumerate(remainders):
             data.append(f" {i+1}. Remainder for {r.course_name} {r.event_type if r.event_type else ''} set at {r.remainder_time.strftime('%d %B %Y at %I:%M %p')}")
     if len(data)==0:
-        return Command(goto='remainder_end', update={'tool_response':'No such remainders exists, try viewing all remainders'})
+        return Command(goto='remainder_end', update={'tool_response':'No remainders exists, try viewing all remainders'})
     if len(data)>1 or state['remainder_data'].get('course_name',None) is None:
         prompt = None
         if(state['remainder_data'].get('retry_message',None)):
@@ -68,6 +69,8 @@ def update_remainder(state:State):
         old_remainder.remainder_time = state['remainder_data'].get('remainder_time',None) or old_remainder.remainder_time
         old_remainder.event_type = state['remainder_data'].get('event_type',None) or old_remainder.event_type
         old_remainder.extra_info = state['remainder_data'].get('extra_info',None) or old_remainder.extra_info
+        old_remainder.status = "pending"
+        schedule_remainder(old_remainder)
         try:
             db.commit()
             db.refresh(old_remainder)

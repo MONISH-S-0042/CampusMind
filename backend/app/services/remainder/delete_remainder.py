@@ -4,6 +4,7 @@ from app.db.models import Remainder
 from langgraph.types import Command, interrupt
 from app.db.database import session
 from app.services.utilities.cancel_remainder_operation import cancelled_command
+from app.services.notification.scheduler import unschedule_remainder
 load_dotenv()
     
 def delete_remainder(state:State):
@@ -33,6 +34,7 @@ def delete_remainder(state:State):
         for remainder in remainders:
             prompt = prompt + (f"Remainders for course {remainder.course_name} at "
                 f"{remainder.remainder_time.strftime('%d %B %Y at %I:%M %p')}\n")
+            unschedule_remainder(remainder)
             db.delete(remainder)
         try:
             db.commit()
