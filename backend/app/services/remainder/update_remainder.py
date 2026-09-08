@@ -17,7 +17,7 @@ def get_remainder_tochange(state:State):#Selects remainder for both delete and u
             remainders = remainders.filter(Remainder.event_type == state['remainder_data']['event_type'])
         remainders = remainders.all()
         for i,r in enumerate(remainders):
-            data.append(f" {i+1}. Remainder for {r.course_name} {r.event_type if r.event_type else ''} set at {r.remainder_time}")
+            data.append(f" {i+1}. Remainder for {r.course_name} {r.event_type if r.event_type else ''} set at {r.remainder_time.strftime('%d %B %Y at %I:%M %p')}")
     if len(data)==0:
         return Command(goto='remainder_end', update={'tool_response':'No such remainders exists, try viewing all remainders'})
     if len(data)>1 or state['remainder_data'].get('course_name',None) is None:
@@ -30,20 +30,24 @@ def get_remainder_tochange(state:State):#Selects remainder for both delete and u
         selection = interrupt(prompt)
         if is_cancel(selection):
             return cancelled_command("Okay, I've cancelled the operation — nothing was updated.") 
+        is_delete = state['remainder_data']['operation'] == 'delete'
+        raw_parts = [p.strip() for p in str(selection).replace(',', ' ').split() if p.strip()]
         try:
-            selection = int(str(selection).strip())
-        except:
-            state['remainder_data']['retry_message']=(f"Kindly enter a value from 1 to {len(data)}\n" +"\n".join(data))
-            return Command(goto='start_get_remainder',update={'remainder_data':state['remainder_data']})
-        
-        if(selection<1 or selection >len(data)):
-            state["remainder_data"]["retry_message"] = (f"Kindly enter a value from 1 to {len(data)}\n" +"\n".join(data))
+            indices = [int(p) for p in raw_parts]
+            if not is_delete and len(indices) > 1:
+                raise ValueError("update only supports one selection")
+            if any(i < 1 or i > len(data) for i in indices):
+                raise ValueError("out of range")
+        except ValueError:
+            state['remainder_data']['retry_message']=(
+                f"Kindly enter {'one or more values' if is_delete else 'a single value'} from 1 to {len(data)}\n" + "\n".join(data))
             return Command(goto='start_get_remainder',update={'remainder_data':state['remainder_data']})
     
-    rem =  remainders[0] if len(data)==1 else remainders[selection - 1]
     if state['remainder_data']['operation'] == 'delete':
-        state['remainder_data']['delete_id'] = rem.id
+        state['remainder_data']['delete_ids'] = [remainders[i - 1].id for i in indices]
         return Command(goto='delete_remainder',update={'remainder_data':state['remainder_data']})
+    
+    rem =  remainders[indices[0] - 1]
     state['remainder_data']['course_name'] =  rem.course_name
     state['remainder_data']['event_type'] =  rem.event_type
     state['remainder_data']['update_id'] = rem.id
