@@ -2,7 +2,7 @@ from langgraph.types import Command
 from langgraph.graph import StateGraph,START,END
 from dotenv import load_dotenv
 from app.services.langgraph_model import State
-from app.services.remainder.create_remainder import check_course, check_extra, check_time, confirm_remainder, ask_correction, create_remainder
+from app.services.remainder.create_remainder import check_course, check_extra, check_mobile_number, check_time, confirm_remainder, ask_correction, create_remainder
 from app.services.core_nodes.core_nodes import RAG_tool, chatbot, classify_intent, remainder_end, route_by_intent, summarize_conversation,remainder_operation
 from app.services.remainder.view_remainder import get_remainders
 from app.services.remainder.update_remainder import get_remainder_tochange, update_remainder
@@ -26,12 +26,14 @@ graph_builder.add_node("view_remainder",get_remainders)
 graph_builder.add_node("check_time", check_time)
 graph_builder.add_node("check_course", check_course)
 graph_builder.add_node("check_extra", check_extra)
+graph_builder.add_node("check_mobile_number",check_mobile_number)
 graph_builder.add_node("confirm_remainder", confirm_remainder)
 graph_builder.add_node("ask_correction", ask_correction)
 graph_builder.add_node("create_remainder", create_remainder)
 graph_builder.add_node("start_get_remainder",get_remainder_tochange)
 graph_builder.add_node("update_remainder",update_remainder)
 graph_builder.add_node("delete_remainder",delete_remainder)
+
 
 #Core flow
 graph_builder.add_edge(START,"summarizer")

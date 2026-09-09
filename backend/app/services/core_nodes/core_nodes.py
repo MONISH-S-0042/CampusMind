@@ -155,7 +155,8 @@ def remainder_end(state:State):
     return {"remainder_data": {
                     "operation": None, "course_name": None, "time_mentioned": None,
                     "remainder_time": None, "event_type": None, "extra_info": None,
-                    "retry_message": None, "update_id": None, "delete_ids": None
+                    "retry_message": None, "update_id": None, "delete_ids": None,
+                    "change_number":None
     }}
     
 def chatbot(state:State):

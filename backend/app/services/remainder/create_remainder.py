@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from langgraph.types import Command, interrupt
 from dotenv import load_dotenv
 from app.services.langgraph_model import State
-from app.db.models import Remainder
+from app.db.models import Remainder, User
 from app.db.database import session
 from app.services.utilities.time import IST, is_past_date, to_local_time
 from app.services.utilities.cancel_remainder_operation import is_cancel, cancelled_command
@@ -89,8 +89,41 @@ def check_extra(state: State):
             return cancelled_command("Okay, I've cancelled the operation.")
         if str(answer).strip().lower() not in ("skip", "no", "none", ""):
             data['extra_info'] = answer
-    return Command(goto="confirm_remainder", update={"remainder_data": data})
+    return Command(goto="check_mobile_number", update={"remainder_data": data})
 
+def check_mobile_number(state:State):
+    """Checks whether the user has saved his phone number """
+    
+    user_id = state['user_id']
+    with session() as db:
+        user = db.query(User).filter(User.id==user_id).first()
+        if not user:
+            return cancelled_command("Unable to find the user, kindly retry.")
+        if user.mobile_number and not state['remainder_data'].get("change_number",None):
+            state['remainder_data'].pop('retry_message',None)
+            return Command(goto="confirm_remainder",update={'remainder_data':state['remainder_data']})
+    prompt = state['remainder_data'].get('retry_message',None)
+    answer = interrupt(prompt or "Kindly enter your mobile number to send the remainer as SMS, or 'cancel' to stop.")
+    if is_cancel(answer):
+        return cancelled_command("Okay, I've cancelled the operation.")
+    number = str(answer).strip()
+    if len(number)!=10 or not number.isdigit():
+        state['remainder_data']['retry_message'] = "Kindly enter a valid 10 digit mobile number"
+        return Command(goto="check_mobile_number", update={'remainder_data':state['remainder_data']})
+    with session() as db:
+        user = db.query(User).filter(User.id==user_id).first()
+        if not user:
+            return cancelled_command("Unable to find the user, kindly retry.")
+        user.mobile_number = number
+        try:
+            db.commit()
+        except:
+            db.rollback()
+            print(f"Failed to save mobile number for user: {user.id}")
+            return cancelled_command("Unable to save your mobile number. Kindly retry.")
+    
+    state['remainder_data'].pop('retry_message',None)
+    return Command(goto="confirm_remainder",update={'remainder_data':state['remainder_data']})
 
 def confirm_remainder(state: State):
     """Confirmation before creating a remainder
@@ -112,15 +145,14 @@ def confirm_remainder(state: State):
             return Command(goto="update_remainder", update={"tool_response": "confirmed"})
         return Command(goto="create_remainder", update={"tool_response": "confirmed"})
     return Command(goto="ask_correction", update={"tool_response": "not_confirmed"})
-
-
+ 
 def ask_correction(state: State):
     """Asks which field to correct after a rejected confirmation.
 
     Returns:
         Command: Updates 'remainder_data' and routes to the relevant check_* node.
     """
-    answer = interrupt("What would you like to change — time, course, or the extra details? (or 'cancel' to stop)")
+    answer = interrupt("What would you like to change — time, course, mobile number, or the extra details? (or 'cancel' to stop)")
     if is_cancel(answer):
         return cancelled_command("Okay, I've cancelled the operation.")
 
@@ -136,10 +168,14 @@ def ask_correction(state: State):
         data['event_type'] = None
         data['extra_info'] = None
         target = "check_extra"
+    elif "number" in text or "phone" in text or "mobile" in text:
+        state['remainder_data']['change_number'] = True
+        target = "check_mobile_number"
     else:
         data['remainder_time'] = None
         target = "check_time"
     return Command(goto=target, update={"remainder_data": data})
+
 
 
 def create_remainder(state: State):

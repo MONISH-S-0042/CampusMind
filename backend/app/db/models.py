@@ -12,6 +12,8 @@ class User(Base):
     id=Column(Integer,primary_key=True, index=True)
     username=Column(String,nullable=False, unique= True)
     hashed_password=Column(String,nullable=False)
+    mobile_number=Column(String,nullable=True)
+    email_id=Column(String,nullable=True)
     chats = relationship("Chat", back_populates="user")
     remainders = relationship("Remainder", back_populates="user")
     
