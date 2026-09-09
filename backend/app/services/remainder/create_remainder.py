@@ -12,6 +12,11 @@ from app.services.notification.scheduler import schedule_remainder
 load_dotenv()
 import dateparser
 
+EMAIL_PATTERN = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+def is_valid_email(mail: str) -> bool:
+    return bool(EMAIL_PATTERN.match(mail))
+
 def clean_weekday_modifiers(text: str) -> str:
     return re.sub(
         r'\b(next|this|coming|upcoming)\s+(?=monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
@@ -89,38 +94,38 @@ def check_extra(state: State):
             return cancelled_command("Okay, I've cancelled the operation.")
         if str(answer).strip().lower() not in ("skip", "no", "none", ""):
             data['extra_info'] = answer
-    return Command(goto="check_mobile_number", update={"remainder_data": data})
+    return Command(goto="check_email_id", update={"remainder_data": data})
 
-def check_mobile_number(state:State):
-    """Checks whether the user has saved his phone number """
+def check_email_id(state:State):
+    """Checks whether the user has saved his email id """
     
     user_id = state['user_id']
     with session() as db:
         user = db.query(User).filter(User.id==user_id).first()
         if not user:
             return cancelled_command("Unable to find the user, kindly retry.")
-        if user.mobile_number and not state['remainder_data'].get("change_number",None):
+        if user.email_id and not state['remainder_data'].get("change_email",None):
             state['remainder_data'].pop('retry_message',None)
             return Command(goto="confirm_remainder",update={'remainder_data':state['remainder_data']})
     prompt = state['remainder_data'].get('retry_message',None)
-    answer = interrupt(prompt or "Kindly enter your mobile number to send the remainer as SMS, or 'cancel' to stop.")
+    answer = interrupt(prompt or "Kindly enter your email id to send the remainder, or 'cancel' to stop.")
     if is_cancel(answer):
         return cancelled_command("Okay, I've cancelled the operation.")
-    number = str(answer).strip()
-    if len(number)!=10 or not number.isdigit():
-        state['remainder_data']['retry_message'] = "Kindly enter a valid 10 digit mobile number"
-        return Command(goto="check_mobile_number", update={'remainder_data':state['remainder_data']})
+    mail = str(answer).strip()
+    if not mail or not is_valid_email(mail):
+        state['remainder_data']['retry_message'] = "Kindly enter a valid mail id"
+        return Command(goto="check_email_id", update={'remainder_data':state['remainder_data']})
     with session() as db:
         user = db.query(User).filter(User.id==user_id).first()
         if not user:
             return cancelled_command("Unable to find the user, kindly retry.")
-        user.mobile_number = number
+        user.email_id = mail
         try:
             db.commit()
         except:
             db.rollback()
-            print(f"Failed to save mobile number for user: {user.id}")
-            return cancelled_command("Unable to save your mobile number. Kindly retry.")
+            print(f"Failed to save email id for user: {user.id}")
+            return cancelled_command("Unable to save your email id. Kindly retry.")
     
     state['remainder_data'].pop('retry_message',None)
     return Command(goto="confirm_remainder",update={'remainder_data':state['remainder_data']})
@@ -152,7 +157,7 @@ def ask_correction(state: State):
     Returns:
         Command: Updates 'remainder_data' and routes to the relevant check_* node.
     """
-    answer = interrupt("What would you like to change — time, course, mobile number, or the extra details? (or 'cancel' to stop)")
+    answer = interrupt("What would you like to change — time, course, email id, or the extra details? (or 'cancel' to stop)")
     if is_cancel(answer):
         return cancelled_command("Okay, I've cancelled the operation.")
 
@@ -168,9 +173,9 @@ def ask_correction(state: State):
         data['event_type'] = None
         data['extra_info'] = None
         target = "check_extra"
-    elif "number" in text or "phone" in text or "mobile" in text:
-        state['remainder_data']['change_number'] = True
-        target = "check_mobile_number"
+    elif "email" in text or "mail" in text or "mailid" in text:
+        state['remainder_data']['change_email'] = True
+        target = "check_email_id"
     else:
         data['remainder_time'] = None
         target = "check_time"
