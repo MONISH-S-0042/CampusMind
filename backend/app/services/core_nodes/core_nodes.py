@@ -11,7 +11,8 @@ from app.services.utilities.time import IST, to_local_time
 load_dotenv()
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY")
-
+INTENT_LLM = os.getenv("INTENT_LLM")
+CHATBOT_LLM = os.getenv("CHATBOT_LLM")
 def get_chat_bot(llm_name:str):
     llm = init_chat_model(model=llm_name)
     return llm
@@ -28,8 +29,8 @@ def RAG_tool(state:State):
     return {'tool_response':response}
 
 
-llm = get_chat_bot("google_genai:gemini-3.5-flash-lite") 
-intent_llm = get_chat_bot("groq:openai/gpt-oss-120b")
+llm = get_chat_bot(CHATBOT_LLM) 
+intent_llm = get_chat_bot(INTENT_LLM)
 structured_agent = intent_llm.with_structured_output(IntentRespone,method='json_mode')
 
 def summarize_conversation(state:State):
@@ -200,6 +201,7 @@ def chatbot(state:State):
             current question.
             - Do not mention internal implementation details such as workflow,
             state, tool_response, RAG, nodes, etc.
+            - Answer exactly to what the user's query in strcitly proper format(spaces, linebreaks, bold)
             """))
     return {"messages":[llm.invoke([system_prompt]+state['messages'])],"tool_response": ""}
 
