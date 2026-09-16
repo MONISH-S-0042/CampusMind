@@ -68,30 +68,38 @@ def add_message(chat_id:int, query:str , db:Session = Depends(get_db), payload =
         res["response"] = response
     return res
 
+from typing import Optional
+from sqlalchemy import asc, desc
+
 @router.get("/{chat_id}/messages")
-def get_history(chat_id:int, payload =Depends(verify_token), db:Session = Depends(get_db)):
-    user_id=int(payload["sub"])
-    chat = db.query(Chat).filter(Chat.id == chat_id , Chat.user_id == user_id).first()
+def get_history(
+    chat_id: int,
+    limit: int = 30,
+    before_id: Optional[int] = None,
+    payload = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    user_id = int(payload["sub"])
+    chat = db.query(Chat).filter(Chat.id == chat_id, Chat.user_id == user_id).first()
     if not chat:
-        raise HTTPException(
-            status_code=404,
-            detail="Chat not found"
-    )
-    messages = db.query(Message).filter(Message.chat_id == chat_id).order_by(asc(Message.created_at)).all()
-    if not messages:
-        return {
-            "message":"No messages Found"
-        }
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    query = db.query(Message).filter(Message.chat_id == chat_id)
+
+    if before_id is not None:
+        anchor = db.query(Message).filter(Message.id == before_id).first()
+        if anchor:
+            query = query.filter(Message.created_at < anchor.created_at)
+
+    messages = query.order_by(desc(Message.created_at)).limit(limit).all()
+    messages.reverse()  # oldest-first within this page, for easy prepending in the UI
+
     return {
-        "chat_id":chat_id,
-        "title":chat.title,
-        "messages":[
-            {
-                "id":message.id,
-                "role":message.role,
-                "content":message.content,
-                "created_at":message.created_at
-            }
-            for message in messages
-        ]
+        "chat_id": chat_id,
+        "title": chat.title,
+        "messages": [
+            {"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at}
+            for m in messages
+        ],
+        "has_more": len(messages) == limit
     }
