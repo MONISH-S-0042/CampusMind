@@ -455,7 +455,7 @@
     }
 
     .bubble p+p {
-      margin-top: 3px;
+      margin-top: 1px;
     }
 
     .bubble p:last-child {
@@ -471,7 +471,7 @@
     .bubble h6 {
       margin: 0;
       padding: 0;
-      line-height: 1.4;
+      line-height: 1;
     }
 
     .bubble h1+p,
@@ -480,14 +480,16 @@
     .bubble h4+p,
     .bubble h5+p,
     .bubble h6+p {
-      margin-top: 3px;
+      margin-top: 0;
     }
 
-    /* Lists */
+    /* Lists — margin/padding stripped to 0 so no extra vertical gaps appear
+       between bullets or between a bullet and its nested sub-list. Only
+       left indent (padding-left) is kept so bullets still line up. */
     .bubble ul,
     .bubble ol {
-      margin: 2px 0 3px;
-      padding-left: 22px;
+      margin: 0;
+      padding: 0 0 0 22px;
     }
 
     .bubble li {
@@ -497,13 +499,13 @@
     }
 
     .bubble li+li {
-      margin-top: 2px;
+      margin: 0;
     }
 
     /* Paragraph immediately before a list */
     .bubble p+ul,
     .bubble p+ol {
-      margin-top: 3px;
+      margin: 0;
     }
 
     /* List immediately after a heading */
@@ -519,7 +521,24 @@
     .bubble h4+ol,
     .bubble h5+ol,
     .bubble h6+ol {
-      margin-top: 3px;
+      margin: 0;
+    }
+
+    /* Loose-list safety net: even if marked emits <p> wrappers inside <li>,
+       or a nested <ul>/<ol> right after a bullet, strip their spacing too. */
+    .bubble li>p {
+      margin: 0;
+      padding: 0;
+    }
+
+    .bubble li>p+p {
+      margin: 0;
+    }
+
+    .bubble li>ul,
+    .bubble li>ol {
+      margin: 0;
+      padding: 0 0 0 18px;
     }
 
     .bubble strong {
@@ -641,6 +660,37 @@
       if (window.marked) marked.setOptions({ breaks: true }); // single \n → <br>, matching backend text
 
       const $ = (id) => document.getElementById(id);
+
+      // Collapses blank lines that sit *inside* a markdown list (between bullet
+      // items, or between a bullet and its sub-bullets) so `marked` treats the
+      // list as "tight" instead of "loose". A loose list wraps every <li>'s
+      // content in its own <p>, and those wrapped <p> tags stacking against
+      // nested <ul> margins is what produces the big unwanted gaps between
+      // bullets. This only removes blank lines that sit between two list-like
+      // lines — blank lines between genuine paragraphs are left alone.
+      function tightenListMarkdown(text) {
+        if (!text) return text;
+        const lines = text.split("\n");
+        const isListLine = (l) => /^\s*([-*+]|\d+[.)])\s+/.test(l);
+        const isIndentedLine = (l) => /^\s{2,}\S/.test(l);
+        const out = [];
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (line.trim() === "") {
+            const prev = out[out.length - 1] || "";
+            let j = i;
+            while (j < lines.length && lines[j].trim() === "") j++;
+            const next = lines[j] || "";
+            const prevIsListy = isListLine(prev) || isIndentedLine(prev);
+            const nextIsListy = isListLine(next) || isIndentedLine(next);
+            if (prevIsListy && nextIsListy) {
+              continue; // drop this blank line — keeps the list "tight"
+            }
+          }
+          out.push(line);
+        }
+        return out.join("\n");
+      }
 
       // ---- storage helpers ----
       const store = {
@@ -794,7 +844,7 @@
           // the user's own typed text — render as plain text, no markdown reinterpretation
           bubble.textContent = content;
         } else if (window.marked && window.DOMPurify) {
-          bubble.innerHTML = DOMPurify.sanitize(marked.parse(content || ""));
+          bubble.innerHTML = DOMPurify.sanitize(marked.parse(tightenListMarkdown(content || "")));
         } else {
           bubble.textContent = content; // graceful fallback if the CDN libraries failed to load
         }
@@ -826,7 +876,7 @@
             if (kind === "user") {
               bubbleEl.textContent = text;
             } else if (window.marked && window.DOMPurify) {
-              bubbleEl.innerHTML = DOMPurify.sanitize(marked.parse(text));
+              bubbleEl.innerHTML = DOMPurify.sanitize(marked.parse(tightenListMarkdown(text)));
             } else {
               bubbleEl.textContent = text;
             }
@@ -853,7 +903,7 @@
         const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (reduceMotion) {
           const bubbleEl = row.querySelector(".bubble");
-          if (window.marked && window.DOMPurify) bubbleEl.innerHTML = DOMPurify.sanitize(marked.parse(content || ""));
+          if (window.marked && window.DOMPurify) bubbleEl.innerHTML = DOMPurify.sanitize(marked.parse(tightenListMarkdown(content || "")));
           else bubbleEl.textContent = content;
           scrollToBottom();
           return row;
@@ -874,7 +924,7 @@
             i = Math.min(i + chunkSize, fullText.length);
             const partial = fullText.slice(0, i);
             if (kind !== "user" && window.marked && window.DOMPurify) {
-              bubbleEl.innerHTML = DOMPurify.sanitize(marked.parse(partial));
+              bubbleEl.innerHTML = DOMPurify.sanitize(marked.parse(tightenListMarkdown(partial)));
             } else {
               bubbleEl.textContent = partial;
             }

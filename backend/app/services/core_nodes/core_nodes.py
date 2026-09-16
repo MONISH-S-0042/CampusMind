@@ -25,7 +25,7 @@ def RAG_tool(state:State):
         dict: Updates 'tool_response' with the retrieved answer.
     """
     retriver = get_retrival_pipeleine()
-    response = retriver.get_context(state['refined_query'], top_k=10)
+    response = retriver.get_context(state['refined_query'], top_k=15)
     return {'tool_response':response}
 
 
