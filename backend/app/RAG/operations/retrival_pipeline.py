@@ -79,7 +79,7 @@ class RetrivalPipeline:
                     Context:
                     {context if context else 'No context found'}
                     Sources:
-                    {[source.get('source') for source in sources] if len(sources)>0 else 'No sources'}
+                    {[source.get('source') for source in sources] if sources and len(sources)>0 else 'No sources'}
                     Confidence:
                     {confidence if confidence else 'NIL'}
                     Question asked in current turn:
