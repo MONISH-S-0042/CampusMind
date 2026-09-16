@@ -824,7 +824,30 @@
       function formatTime(value) {
         const d = value ? new Date(value) : new Date();
         if (isNaN(d.getTime())) return "";
-        return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+        const timePart = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+        const startOfDay = (dt) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+        const today = startOfDay(new Date());
+        const msgDay = startOfDay(d);
+        const dayDiff = Math.round((today - msgDay) / 86400000);
+
+        if (dayDiff === 0) return `Today, ${timePart}`;
+        if (dayDiff === 1) return `Yesterday, ${timePart}`;
+        if (dayDiff > 1 && dayDiff < 7) {
+          // e.g. "Wed, 8:40 PM"
+          const weekday = d.toLocaleDateString([], { weekday: "short" });
+          return `${weekday}, ${timePart}`;
+        }
+        // older than a week — e.g. "Wed 16 Sep, 8:40 PM" (drop the year if it's this year)
+        const sameYear = d.getFullYear() === today.getFullYear();
+        const datePart = d.toLocaleDateString([], {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: sameYear ? undefined : "numeric"
+        });
+        return `${datePart}, ${timePart}`;
       }
 
       function createBubbleRow(role, content, createdAt) {
