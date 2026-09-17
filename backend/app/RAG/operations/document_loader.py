@@ -1,11 +1,10 @@
 from typing import List
 
 from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyMuPDFLoader, TextLoader
 from pathlib import Path
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from app.db.database import session
 from app.db.models import Document
 
 class DocumentLoader:
@@ -25,7 +24,7 @@ class DocumentLoader:
                 print("Already added")
                 continue
             try:
-                loader = PyPDFLoader(pdf_file)
+                loader = PyMuPDFLoader(str(pdf_file))
                 #Gives list of document where each page is a document
                 documents = loader.load()
                 
@@ -39,7 +38,30 @@ class DocumentLoader:
                 
             except Exception as e:
                 print(f"Error while loading {pdf_file.name} : {e}")
-            
+        
+        #Loading text files
+        text_files = list(self.dir_path.glob("**/*.txt"))
+        for text_file in text_files:
+            print(f"Processing {text_file.name} file....")
+            if self._is_document_available(text_file):
+                print("Already added")
+                continue
+            try:
+                loader = TextLoader(str(text_file))
+                #Gives list of document where each page is a document
+                documents = loader.load()
+                
+                for doc in documents:
+                    doc.metadata['file_type'] = 'txt'
+                    doc.metadata['source_file'] = text_file.name
+                
+                    all_documents.extend(documents)
+                    print(f"Loaded {len(documents)} pages in {text_file.name}")
+                    self._save_to_db(text_file,"txt")
+                        
+            except Exception as e:
+                print(f"Error while loading {text_file.name} : {e}")
+    
         return all_documents
     
     def _is_document_available(self,file_path:Path):

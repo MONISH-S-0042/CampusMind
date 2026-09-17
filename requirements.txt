@@ -1,5 +1,5 @@
 langchain
-pypdf
+pymupdf
 langchain-community
 langchain-classic
 langgraph
