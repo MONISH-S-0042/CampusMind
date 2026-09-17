@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from sentence_transformers import CrossEncoder
 from app.RAG.operations.embedding_manager import EmbeddingManager, get_embedding_manager
 from app.RAG.operations.rag_retriver import RAGRetriver
 from app.RAG.operations.vectore_store import VectorStore, get_vector_store
@@ -11,9 +12,10 @@ from langchain.chat_models import init_chat_model
 
 class RetrivalPipeline:
     
-    def __init__(self, llm, vector_store:VectorStore,embedding_manager:EmbeddingManager):
+    def __init__(self, llm, vector_store:VectorStore,embedding_manager:EmbeddingManager, rerankModel:CrossEncoder):
         self.llm = llm
-        self.retriver = RAGRetriver(vector_store,embedding_manager)
+        self.retriver = RAGRetriver(vector_store,embedding_manager, rerankModel)
+        
         
     def _retrive(self,query:str, top_k:int =5):
         results =  self.retriver.retrive(query,top_k)
@@ -38,21 +40,28 @@ class RetrivalPipeline:
     
     def _create_prompt(self,query:str, context:str, sources)->str:
         prompt = f"""You are CampusMind, an AI assistant for VIT students.
+                Your goal is to answer the user's question based STRICTLY on the provided context.
 
-                    Answer ONLY using the provided context.If it is a query too specific answer that first else explain clearly
+                === RULES FOR ANSWERING ===
+                1. You must extract the answer only from the provided text. Do not use outside knowledge.
+                2. You are allowed to use basic deductive reasoning. For example:
+                - If the user asks if 'X' is allowed, and the context explicitly prohibits 'X', state that it is prohibited.
+                - If the user asks if an item belongs to a specific list, and the context provides the complete list which does not include that item, state clearly that it is not on the list.
+                3. If the context completely lacks the information needed to answer the question, do not guess. You must return EXACTLY this phrase and nothing else: "Not Found in Documents".
 
-                    If the answer cannot be found in the context,
-                    return only "Not Found in Documents".
-                    if only found then Add file source to top of response text
+                === OUTPUT FORMAT ===
+                If you find the answer, you MUST place the source file name at the very top of your response, followed by a blank line, and then your answer.
 
-                    Context:
-                    {context}
-                    Sources:
-                    {[source.get('source') for source in sources]}
-                    Question:
-                    {query}
+                Context:
+                {context}
 
-                    Answer:"""
+                Sources:
+                {[source.get('source') for source in sources]}
+
+                Question:
+                {query}
+
+                Answer:"""
         return prompt
         
     def process_query(self,query:str, top_k:int=5):
@@ -94,9 +103,10 @@ def get_chat_bot(llm_name:str):
 
 vector_store = get_vector_store()
 embedding_manager = get_embedding_manager()
+rerankModel = CrossEncoder("BAAI/bge-reranker-base", local_files_only=True)
 llm = get_chat_bot("google_genai:gemini-3.5-flash-lite")
 
-retrival_pipeline = RetrivalPipeline(llm,vector_store, embedding_manager)
+retrival_pipeline = RetrivalPipeline(llm,vector_store, embedding_manager, rerankModel)
 
 def get_retrival_pipeleine():
     return retrival_pipeline
