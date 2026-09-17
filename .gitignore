@@ -3,3 +3,5 @@ myenv/
 __pycache__
 pdf_files/
 vector_store/
+text_files/
+tests/

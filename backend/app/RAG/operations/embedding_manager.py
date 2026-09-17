@@ -6,7 +6,7 @@ from sentence_transformers import SentenceTransformer
 
 class EmbeddingManager:
     """Handles the generation of embedding for chunks using SentenceTransformer"""
-    def __init__(self, model_name:str = "all-MiniLM-L6-v2"):
+    def __init__(self, model_name:str = "google/embeddinggemma-300m"):
         self.model_name=model_name
         self.model=None
         self._load_model()
