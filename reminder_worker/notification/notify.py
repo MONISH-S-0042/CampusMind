@@ -1,5 +1,7 @@
-from app.db.models import Remainder, User
-from app.db.database import session
+from datetime import datetime
+
+from db.models import IST, Remainder, User
+from db.database import session
 import os
 import requests
 from dotenv import load_dotenv
@@ -35,6 +37,7 @@ def send_remainder(remainder_id:int, notification_type:str):
             print("Remainder does not exist or inactive")
             return
         remainder.status = status
+        remainder.sent_at = datetime.now(IST)
         if notification_type == 'at_time' and is_success:
             remainder.is_active = False
         try:

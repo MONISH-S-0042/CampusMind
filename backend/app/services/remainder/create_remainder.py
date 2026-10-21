@@ -1,19 +1,20 @@
+import os
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from langgraph.types import Command, interrupt
 from dotenv import load_dotenv
+import requests
 from app.services.langgraph_model import State
 from app.db.models import Remainder, User
 from app.db.database import session
 from app.services.utilities.time import IST, is_past_date, to_local_time
 from app.services.utilities.cancel_remainder_operation import is_cancel, cancelled_command
-from app.services.notification.scheduler import schedule_remainder
 load_dotenv()
 import dateparser
 
 EMAIL_PATTERN = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-
+SCHEDULER_URL = os.getenv("NOTIFICATION_SERVICE_URL")
 def is_valid_email(mail: str) -> bool:
     return bool(EMAIL_PATTERN.match(mail))
 
@@ -166,7 +167,13 @@ def create_remainder(state: State):
 
         db.add(remainder)
         db.commit()
-        schedule_remainder(remainder)
+        response = requests.post(f"{SCHEDULER_URL}/internal/schedule_reminder",json={"id":remainder.id},timeout=60)
+        retry = 2
+        while(retry>0 and ((response and response.status_code!=201) or not response)):
+            response = requests.post(f"{SCHEDULER_URL}/internal/schedule_reminder",json={"id":remainder.id},timeout=60)
+            retry -= 1
+        if(not response or response.status_code!=201):
+            return {'tool_response': f'Remainder stored successfully, but not scheduled'}
         course_name = remainder.course_name
         remainder_time = remainder.remainder_time
 

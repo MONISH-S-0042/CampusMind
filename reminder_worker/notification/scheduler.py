@@ -5,11 +5,26 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.jobstores.base import JobLookupError
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from db.database import get_db
+from db.models import Remainder
+from notification.notify import send_remainder
+from dotenv import load_dotenv
+load_dotenv()
+from pydantic import BaseModel
 
-from app.db.models import Remainder
-from app.services.utilities.time import to_local_time
-from app.services.notification.notify import send_remainder
+class ScheduleReminderRequest(BaseModel):
+    id: int
+IST = ZoneInfo("Asia/Kolkata")
+def to_local_time(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=IST)
+    return dt.astimezone(IST)
 
+def is_past_date(date):
+    return to_local_time(date) <= datetime.now(IST)
 db_url = os.getenv("DATABASE_URL", "postgresql://postgres:root@localhost:5432/campusmind")
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -22,7 +37,7 @@ scheduler = BackgroundScheduler(
     jobstores = jobstores,
     timezone = IST
 )
-
+router = APIRouter()
 def start_scheduler():
     if not scheduler.running:
         scheduler.start()
@@ -33,7 +48,16 @@ def stop_scheduler():
         scheduler.shutdown()
         print("Scheduler stopped")
         
-def schedule_remainder(remainder:Remainder):
+@router.post("/internal/schedule_reminder")
+def schedule_remainder(payload:ScheduleReminderRequest, db:Session = Depends(get_db)):
+    remainder_id = payload.id
+    remainder = db.query(Remainder).filter(Remainder.id == remainder_id).first()
+    if not remainder:
+        return JSONResponse(
+            status_code=201,
+            content={
+            "message":"Remainder not found",
+        })
     rid = remainder.id
     time = to_local_time(remainder.remainder_time)
     now = datetime.now(IST)
@@ -75,17 +99,35 @@ def schedule_remainder(remainder:Remainder):
         remove_job_if_exists(f"remainder:{rid}:before_1_day")
     
     print(f"Scheduled remainder for {remainder.id}")
-
+    return JSONResponse(
+                status_code=201,
+                content={
+                "message":"success",
+            })
 
 def remove_job_if_exists(job_id:str):
     try:
         scheduler.remove_job(job_id)
     except JobLookupError:
         pass
-    
-def unschedule_remainder(remainder:Remainder):
+
+@router.post("/internal/unschedule_reminder")
+def unschedule_remainder(payload:ScheduleReminderRequest, db:Session = Depends(get_db)):
+    remainder_id = payload.id
+    remainder = db.query(Remainder).filter(Remainder.id == remainder_id).first()
+    if not remainder:
+        return JSONResponse(
+                    status_code=201,
+                    content={
+                    "message":"Remainder not found",
+                })
     rid = remainder.id
     remove_job_if_exists(f"remainder:{rid}:before_1_day")
     remove_job_if_exists(f"remainder:{rid}:before_2_hours")
     remove_job_if_exists(f"remainder:{rid}:at_time")
     print(f"Unscheduled {remainder.id}")
+    return JSONResponse(
+                status_code=201,
+                content={
+                "message":"success",
+    })

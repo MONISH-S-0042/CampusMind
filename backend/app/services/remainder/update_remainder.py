@@ -1,11 +1,13 @@
+import os
 from dotenv import load_dotenv
+import requests
 from app.services.langgraph_model import State
 from app.db.models import Remainder
 from langgraph.types import Command, interrupt
 from app.db.database import session
 from app.services.utilities.cancel_remainder_operation import cancelled_command, is_cancel
-from app.services.notification.scheduler import schedule_remainder
 load_dotenv()
+SCHEDULER_URL = os.getenv("NOTIFICATION_SERVICE_URL")
 
 
 def get_remainder_tochange(state:State):#Selects remainder for both delete and update
@@ -70,10 +72,17 @@ def update_remainder(state:State):
         old_remainder.event_type = state['remainder_data'].get('event_type',None) or old_remainder.event_type
         old_remainder.extra_info = state['remainder_data'].get('extra_info',None) or old_remainder.extra_info
         old_remainder.status = "pending"
-        schedule_remainder(old_remainder)
+
         try:
             db.commit()
             db.refresh(old_remainder)
+            response = requests.post(f"{SCHEDULER_URL}/internal/schedule_reminder",json={"id":old_remainder.id},timeout=60)
+            retry = 2
+            while(retry>0 and ((response and response.status_code!=201) or not response)):
+                response = requests.post(f"{SCHEDULER_URL}/internal/schedule_reminder",json={"id":old_remainder.id},timeout=60)
+                retry -=1
+            if(not response or response.status_code!=201):
+                return {'tool_response': f"Reminder was updated in the database, but scheduling failed. Please retry scheduling."}
             prompt = prompt+ f" to {old_remainder.course_name} at {old_remainder.remainder_time.strftime('%d %B %Y at %I:%M %p')}"
         except:
             db.rollback()
