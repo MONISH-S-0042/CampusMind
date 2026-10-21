@@ -4,6 +4,7 @@ from app.db.database import engine, get_db, db_url
 from app.db.models import Base, User
 from sqlalchemy.orm import Session
 from app.services.authentication import auth
+from starlette.middleware.sessions import SessionMiddleware
 from app.services.chat import get_chat
 from app.services.chat import message
 from app.RAG.operations.data_ingestion import DataIngestion
@@ -13,6 +14,9 @@ from app.services import graph as graph_module
 from langgraph.checkpoint.postgres import PostgresSaver
 from fastapi.middleware.cors import CORSMiddleware
 from app.services.notification.scheduler import start_scheduler, stop_scheduler
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 Base.metadata.create_all(bind=engine)
 
@@ -40,6 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SessionMiddleware, secret_key = os.getenv("SESSION_SECRET"))
 
 @app.get("/")
 def home():

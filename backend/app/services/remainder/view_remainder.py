@@ -13,7 +13,7 @@ def get_remainders(state:State):
         
         remainders = remainders.order_by(Remainder.remainder_time).all()
         res = [f"- {r.event_type or 'Remainder'} for {r.course_name} at {to_local_time(r.remainder_time).strftime("%d %B %Y at %I:%M %p")}\n"
-               + f"({r.extra_info if r.extra_info else ""})"
+               + f"{"("+r.extra_info+")" if r.extra_info else ""}"
                for r in remainders]
         
     res = "Here are your reminders:\n" + "\n".join(res) if len(res)>0 else "No remainders added"

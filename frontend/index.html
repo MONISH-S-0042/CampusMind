@@ -120,36 +120,12 @@
       line-height: 1.5;
     }
 
-    .field {
-      margin-bottom: 16px;
-    }
-
-    .field label {
-      display: block;
-      font-size: 13px;
-      color: var(--text-dim);
-      margin-bottom: 6px;
-    }
-
-    .field input {
+    /* Google sign-in button — light surface so the multicolour "G" stays legible */
+    .btn-google {
       width: 100%;
-      background: var(--ink);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 11px 13px;
-      color: var(--text);
-      font-size: 15px;
-    }
-
-    .field input:focus-visible {
-      border-color: var(--amber);
-    }
-
-    .btn-primary {
-      width: 100%;
-      background: var(--amber);
-      color: #1a1406;
-      border: none;
+      background: #f6f5f1;
+      color: #1f2430;
+      border: 1px solid #f6f5f1;
       border-radius: 10px;
       padding: 12px 16px;
       font-size: 15px;
@@ -157,34 +133,21 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: filter .15s ease;
+      gap: 10px;
+      transition: filter .15s ease, border-color .15s ease;
     }
 
-    .btn-primary:hover {
-      filter: brightness(1.06);
+    .btn-google:hover {
+      filter: brightness(0.96);
     }
 
-    .btn-primary:disabled {
-      opacity: .6;
+    .btn-google:disabled {
+      opacity: .65;
       cursor: default;
     }
 
-    .auth-switch {
-      text-align: center;
-      margin-top: 18px;
-      font-size: 13.5px;
-      color: var(--text-dim);
-    }
-
-    .auth-switch button {
-      background: none;
-      border: none;
-      color: var(--amber);
-      font-size: 13.5px;
-      padding: 0;
-      text-decoration: underline;
-      text-underline-offset: 2px;
+    .btn-google svg {
+      flex-shrink: 0;
     }
 
     .form-error {
@@ -448,47 +411,45 @@
       padding: 6px 0 4px;
     }
 
-    /* Markdown content inside AI/system bubbles */
-    .bubble p {
+    /* Markdown content inside AI/system bubbles.
+       Whitespace is collapsed on these bubbles (white-space: normal) so the raw "\n"
+       characters marked puts between tags never render as extra blank lines. All spacing
+       is then set explicitly here: exactly ONE blank line between top-level blocks
+       (paragraphs, headings, lists, code, quotes, tables), tight lists inside. */
+    .bubble {
+      --block-gap: 23px;
+      /* one line: 15px font x 1.55 line-height */
+    }
+
+    .bubble:not(.user) {
+      white-space: normal;
+    }
+
+    .bubble :is(p, h1, h2, h3, h4, h5, h6, ul, ol, pre, blockquote, table, hr) {
       margin: 0;
+    }
+
+    .bubble>:not(:first-child) {
+      margin-top: var(--block-gap);
+    }
+
+    .bubble p {
       line-height: 1.45;
     }
 
-    .bubble p+p {
-      margin-top: 1px;
-    }
-
-    .bubble p:last-child {
-      margin-bottom: 0;
-    }
-
-    /* Headings */
     .bubble h1,
     .bubble h2,
     .bubble h3,
     .bubble h4,
     .bubble h5,
     .bubble h6 {
-      margin: 0;
       padding: 0;
       line-height: 1;
     }
 
-    .bubble h1+p,
-    .bubble h2+p,
-    .bubble h3+p,
-    .bubble h4+p,
-    .bubble h5+p,
-    .bubble h6+p {
-      margin-top: 0;
-    }
-
-    /* Lists — margin/padding stripped to 0 so no extra vertical gaps appear
-       between bullets or between a bullet and its nested sub-list. Only
-       left indent (padding-left) is kept so bullets still line up. */
+    /* Lists: tight. Only the left indent is kept so bullets still line up. */
     .bubble ul,
     .bubble ol {
-      margin: 0;
       padding: 0 0 0 22px;
     }
 
@@ -498,47 +459,21 @@
       line-height: 1.45;
     }
 
-    .bubble li+li {
-      margin: 0;
-    }
-
-    /* Paragraph immediately before a list */
-    .bubble p+ul,
-    .bubble p+ol {
-      margin: 0;
-    }
-
-    /* List immediately after a heading */
-    .bubble h1+ul,
-    .bubble h2+ul,
-    .bubble h3+ul,
-    .bubble h4+ul,
-    .bubble h5+ul,
-    .bubble h6+ul,
-    .bubble h1+ol,
-    .bubble h2+ol,
-    .bubble h3+ol,
-    .bubble h4+ol,
-    .bubble h5+ol,
-    .bubble h6+ol {
-      margin: 0;
-    }
-
-    /* Loose-list safety net: even if marked emits <p> wrappers inside <li>,
-       or a nested <ul>/<ol> right after a bullet, strip their spacing too. */
-    .bubble li>p {
-      margin: 0;
-      padding: 0;
-    }
-
+    /* Loose-list safety net: <p> wrappers or nested lists inside <li> add no gap. */
+    .bubble li>p,
     .bubble li>p+p {
       margin: 0;
+      padding: 0;
     }
 
     .bubble li>ul,
     .bubble li>ol {
       margin: 0;
       padding: 0 0 0 18px;
+    }
+
+    .bubble pre {
+      overflow-x: auto;
     }
 
     .bubble strong {
@@ -595,28 +530,19 @@
     <div id="authView" class="auth-wrap">
       <div class="auth-card">
         <p class="auth-mark">Campus<span>Mind</span></p>
-        <p class="auth-sub" id="authSub">Sign in to pick up where you left off.</p>
+        <p class="auth-sub" id="authSub">Sign in with your Google account to pick up where you left off.</p>
 
-        <div class="form-error" id="authError"></div>
+        <div class="form-error" id="authError" role="alert"></div>
 
-        <form id="authForm">
-          <div class="field">
-            <label for="username">Username</label>
-            <input id="username" type="text" autocomplete="username" required />
-          </div>
-          <div class="field">
-            <label for="password">Password</label>
-            <input id="password" type="password" autocomplete="current-password" required />
-          </div>
-          <button type="submit" class="btn-primary" id="authSubmit">
-            <span id="authSubmitLabel">Sign in</span>
-          </button>
-        </form>
-
-        <div class="auth-switch">
-          <span id="switchPrompt">New here?</span>
-          <button type="button" id="switchBtn">Create an account</button>
-        </div>
+        <button type="button" class="btn-google" id="googleBtn">
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+          </svg>
+          <span id="googleBtnLabel">Continue with Google</span>
+        </button>
       </div>
     </div>
 
@@ -654,12 +580,32 @@
       // ============ CONFIGURE THIS ============
       // Point this at wherever your FastAPI backend actually runs.
       const API_BASE = "http://localhost:8000";
+      // The GET route that starts the Google flow (your `/login` route that calls
+      // oauth.google.authorize_redirect). Adjust if your router prefix differs.
+      const GOOGLE_LOGIN_PATH = "/api/auth/login";
       const PAGE_SIZE = 30; // how many messages to load per page
       // =========================================
 
       if (window.marked) marked.setOptions({ breaks: true }); // single \n → <br>, matching backend text
 
       const $ = (id) => document.getElementById(id);
+
+      // Makes spacing identical no matter how many blank lines the server sends:
+      // any run of blank lines (including ones holding only spaces) becomes exactly one
+      // blank line, and leading/trailing blank space is dropped. Fenced code blocks are
+      // left untouched, and everything else (lists, bold, links...) is plain markdown that
+      // marked still parses as before.
+      function normalizeSpacing(text) {
+        const clean = (chunk) => chunk
+          .replace(/\r\n?/g, "\n")
+          .replace(/[ \t\u00a0]+\n/g, "\n")  // trailing spaces / whitespace-only lines
+          .replace(/\n{3,}/g, "\n\n");        // 2+ blank lines -> exactly one
+        return text
+          .split(/(```[\s\S]*?```)/g)
+          .map((part, i) => (i % 2 ? part : clean(part)))
+          .join("")
+          .replace(/^\s+|\s+$/g, "");
+      }
 
       // Collapses blank lines that sit *inside* a markdown list (between bullet
       // items, or between a bullet and its sub-bullets) so `marked` treats the
@@ -670,6 +616,7 @@
       // lines — blank lines between genuine paragraphs are left alone.
       function tightenListMarkdown(text) {
         if (!text) return text;
+        text = normalizeSpacing(text);
         const lines = text.split("\n");
         const isListLine = (l) => /^\s*([-*+]|\d+[.)])\s+/.test(l);
         const isIndentedLine = (l) => /^\s{2,}\S/.test(l);
@@ -739,6 +686,7 @@
         store.clear();
         $("chatView").classList.add("hidden");
         $("authView").classList.remove("hidden");
+        resetGoogleButton();
       }
 
       function goToChat() {
@@ -746,50 +694,44 @@
         $("chatView").classList.remove("hidden");
       }
 
-      // ============ AUTH VIEW ============
-      let mode = "login"; // or "register"
-
-      $("switchBtn").addEventListener("click", () => {
-        mode = mode === "login" ? "register" : "login";
-        $("authSubmitLabel").textContent = mode === "login" ? "Sign in" : "Create account";
-        $("authSub").textContent = mode === "login"
-          ? "Sign in to pick up where you left off."
-          : "A few seconds and you're in.";
-        $("switchPrompt").textContent = mode === "login" ? "New here?" : "Already have an account?";
-        $("switchBtn").textContent = mode === "login" ? "Create an account" : "Sign in instead";
-        hideAuthError();
-      });
+      // ============ AUTH VIEW (Google sign-in) ============
 
       function showAuthError(msg) {
-        $("authError").textContent = msg;
+        $("authError").textContent = msg; // textContent: never interpret server/URL text as HTML
         $("authError").classList.add("show");
       }
       function hideAuthError() {
         $("authError").classList.remove("show");
       }
 
-      $("authForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
+      function resetGoogleButton() {
+        $("googleBtn").disabled = false;
+        $("googleBtnLabel").textContent = "Continue with Google";
+      }
+
+      $("googleBtn").addEventListener("click", () => {
         hideAuthError();
-        const username = $("username").value.trim();
-        const password = $("password").value;
-        if (!username || !password) return;
+        if (window.location.protocol === "file:") {
+          showAuthError("Serve this page over http (for example: python -m http.server 5500) \u2014 the backend can't redirect back to a file:// page.");
+          return;
+        }
+        $("googleBtn").disabled = true;
+        $("googleBtnLabel").textContent = "Redirecting to Google\u2026";
+        // Full-page navigation: Google needs a top-level redirect (not fetch/XHR), and the
+        // OAuth state cookie lives on the API origin. The backend sends us back here with
+        // the token in the URL fragment, which init() below picks up.
+        window.location.href = API_BASE + GOOGLE_LOGIN_PATH;
+      });
 
-        const submitBtn = $("authSubmit");
-        submitBtn.disabled = true;
-        const originalLabel = $("authSubmitLabel").textContent;
-        $("authSubmitLabel").textContent = mode === "login" ? "Signing in…" : "Creating account…";
+      // If the user hits "Back" from Google's page, the browser may restore this page
+      // from cache with the button still stuck on "Redirecting…".
+      window.addEventListener("pageshow", (e) => {
+        if (e.persisted) resetGoogleButton();
+      });
 
+      // Opens (or resumes) the user's chat once we hold a valid token.
+      async function startSession() {
         try {
-          if (mode === "register") {
-            await api("/api/auth/register", { method: "POST", query: { username, password } });
-            // auto-continue into login after successful registration
-            mode = "login";
-          }
-          const loginRes = await api("/api/auth/login", { method: "POST", query: { username, password } });
-          if (!loginRes || !loginRes.access_token) throw { data: { detail: "Login failed. Please try again." } };
-          store.token = loginRes.access_token;
-
           const openRes = await api("/api/chat/open", { method: "GET", auth: true });
           if (!openRes || !openRes.chat_id) throw { data: { detail: "Could not open a chat session." } };
           store.chatId = openRes.chat_id;
@@ -798,17 +740,17 @@
           goToChat();
           await loadHistory();
         } catch (err) {
-          const detail = err?.data?.detail || (err?.status === 401
-            ? "Invalid username or password."
-            : "Something went wrong. Please try again.");
-          showAuthError(detail);
-        } finally {
-          submitBtn.disabled = false;
-          $("authSubmitLabel").textContent = originalLabel;
+          goToAuth();
+          showAuthError(err && err.unauthorized
+            ? "Your session expired. Please sign in again."
+            : extractErrorMessage(err, "Couldn't start your chat session. Please try again."));
         }
-      });
+      }
 
-      $("logoutBtn").addEventListener("click", goToAuth);
+      $("logoutBtn").addEventListener("click", () => {
+        goToAuth();
+        hideAuthError();
+      });
 
       // ============ CHAT VIEW ============
 
@@ -1130,16 +1072,43 @@
 
       // ============ BOOTSTRAP ============
       (async function init() {
-        if (store.token && store.chatId) {
-          try {
-            goToChat();
-            await loadHistory();
-            return;
-          } catch (_) {
-            goToAuth();
-            return;
-          }
+        // 1) Returning from Google: the backend redirects here with
+        //    #access_token=... (success) or #error=... (failure) in the URL fragment.
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const returnedToken = params.get("access_token");
+        const returnedError = params.get("error");
+
+        if (returnedToken || returnedError) {
+          // Scrub the fragment right away so the token never lingers in the address bar,
+          // history entries, or a copy-pasted URL.
+          history.replaceState(null, "", window.location.pathname + window.location.search);
         }
+
+        if (returnedError) {
+          goToAuth();
+          showAuthError(returnedError.slice(0, 200));
+          return;
+        }
+
+        if (returnedToken) {
+          store.clear();
+          store.token = returnedToken;
+          await startSession();
+          return;
+        }
+
+        // 2) Already signed in from an earlier visit.
+        if (store.token && store.chatId) {
+          goToChat();
+          await loadHistory(); // sends you back to sign-in on a 401 (expired token)
+          return;
+        }
+        if (store.token) {
+          await startSession();
+          return;
+        }
+
+        // 3) Not signed in.
         goToAuth();
       })();
     })();

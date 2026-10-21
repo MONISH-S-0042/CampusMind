@@ -21,3 +21,8 @@ psycopg
 psycopg[binary]
 dateparser
 apscheduler
+uvicorn
+authlib
+httpx2
+starlette
+itsdangerous
