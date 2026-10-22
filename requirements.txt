@@ -26,3 +26,4 @@ authlib
 httpx2
 starlette
 itsdangerous
+boto3
