@@ -163,10 +163,11 @@ def create_remainder(state: State):
             Remainder.course_name == course_name,
             Remainder.remainder_time == remainder_time
         ).first():
-            return {'tool_response': f'Remainder already created for {course_name} at {remainder_time.strftime('%d %B %Y at %I:%M %p')}'}
+            return {'tool_response': f'Remainder already created for {course_name} at {to_local_time(remainder_time).strftime('%d %B %Y at %I:%M %p')}'}
 
         db.add(remainder)
         db.commit()
+        db.refresh(remainder)
         response = requests.post(f"{SCHEDULER_URL}/internal/schedule_reminder",json={"id":remainder.id},timeout=60)
         retry = 2
         while(retry>0 and ((response and response.status_code!=201) or not response)):
@@ -176,5 +177,6 @@ def create_remainder(state: State):
             return {'tool_response': f'Remainder stored successfully, but not scheduled'}
         course_name = remainder.course_name
         remainder_time = remainder.remainder_time
+        remainder_time = to_local_time(remainder_time)
 
     return {'tool_response': f'Remainder created successfully for {course_name} at {remainder_time.strftime('%d %B %Y at %I:%M %p')}'}

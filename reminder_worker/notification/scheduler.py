@@ -25,7 +25,7 @@ def to_local_time(dt: datetime) -> datetime:
 
 def is_past_date(date):
     return to_local_time(date) <= datetime.now(IST)
-db_url = os.getenv("DATABASE_URL", "postgresql://postgres:root@localhost:5432/campusmind")
+db_url = os.environ["DATABASE_URL"]
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -42,6 +42,8 @@ def start_scheduler():
     if not scheduler.running:
         scheduler.start()
         print("Scheduler started")
+    
+    print("Scheduler running:", scheduler.running)
         
 def stop_scheduler():
     if scheduler.running:
@@ -54,7 +56,7 @@ def schedule_remainder(payload:ScheduleReminderRequest, db:Session = Depends(get
     remainder = db.query(Remainder).filter(Remainder.id == remainder_id).first()
     if not remainder:
         return JSONResponse(
-            status_code=201,
+            status_code=404,
             content={
             "message":"Remainder not found",
         })

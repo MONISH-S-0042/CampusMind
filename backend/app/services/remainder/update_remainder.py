@@ -6,6 +6,7 @@ from app.db.models import Remainder
 from langgraph.types import Command, interrupt
 from app.db.database import session
 from app.services.utilities.cancel_remainder_operation import cancelled_command, is_cancel
+from app.services.utilities.time import to_local_time
 load_dotenv()
 SCHEDULER_URL = os.getenv("NOTIFICATION_SERVICE_URL")
 
@@ -20,7 +21,7 @@ def get_remainder_tochange(state:State):#Selects remainder for both delete and u
             remainders = remainders.filter(Remainder.event_type == state['remainder_data']['event_type'])
         remainders = remainders.all()
         for i,r in enumerate(remainders):
-            data.append(f" {i+1}. Remainder for {r.course_name} {r.event_type if r.event_type else ''} set at {r.remainder_time.strftime('%d %B %Y at %I:%M %p')}")
+            data.append(f" {i+1}. Remainder for {r.course_name} {r.event_type if r.event_type else ''} set at {to_local_time(r.remainder_time).strftime('%d %B %Y at %I:%M %p')}")
     if len(data)==0:
         return Command(goto='remainder_end', update={'tool_response':'No remainders exists, try viewing all remainders'})
     if len(data)>1 or state['remainder_data'].get('course_name',None) is None:
@@ -66,7 +67,7 @@ def update_remainder(state:State):
         if not old_remainder:
             return {'tool_response':"An error occured, Kindly retry (Remainder doesn't exist)"}
         
-        prompt = f"Remainder for course updated from {old_remainder.course_name} at {old_remainder.remainder_time.strftime('%d %B %Y at %I:%M %p')}"
+        prompt = f"Remainder for course updated from {old_remainder.course_name} at {to_local_time(old_remainder.remainder_time).strftime('%d %B %Y at %I:%M %p')}"
         old_remainder.course_name = state['remainder_data'].get('course_name',None) or old_remainder.course_name
         old_remainder.remainder_time = state['remainder_data'].get('remainder_time',None) or old_remainder.remainder_time
         old_remainder.event_type = state['remainder_data'].get('event_type',None) or old_remainder.event_type
@@ -83,7 +84,7 @@ def update_remainder(state:State):
                 retry -=1
             if(not response or response.status_code!=201):
                 return {'tool_response': f"Reminder was updated in the database, but scheduling failed. Please retry scheduling."}
-            prompt = prompt+ f" to {old_remainder.course_name} at {old_remainder.remainder_time.strftime('%d %B %Y at %I:%M %p')}"
+            prompt = prompt+ f" to {old_remainder.course_name} at {to_local_time(old_remainder.remainder_time).strftime('%d %B %Y at %I:%M %p')}"
         except:
             db.rollback()
             return {'tool_response':"An error occured, Kindly retry"}
