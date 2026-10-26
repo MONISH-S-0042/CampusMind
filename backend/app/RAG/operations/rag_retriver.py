@@ -17,29 +17,32 @@ class RAGRetriver:
         
         try:
             top_k_vectordb = top_k*6
-            results = self.vector_store.collection.query(
-                query_embeddings=[query_embeddings.tolist()],
-                n_results=top_k_vectordb
+            results = self.vector_store.client.query_points(
+                collection_name=self.vector_store.collection_name,
+                query=query_embeddings.tolist(),
+                limit = top_k_vectordb,
+                with_payload=True,
+                with_vectors=False
             )
-            
+            points = results.points
             retrived_docs = []
-            if results['documents'] and results['documents'][0]:
-                documents = results['documents'][0] #Because chromaDB supports multiple queries simultaneouly it return nested lists(we need for query 0)
-                metadatas = results['metadatas'][0]
-                ids = results['ids'][0]
-                distances = results['distances'][0]
+            if points:
+                documents = [point.payload.get("page_content","") for point in points]
+                metadatas = [point.payload.get("metadata","") for point in points]
+                ids = [point.id for point in points]
+                vector_scores = [point.score for point in points]
                 #Reranking
                 pairs = [[query,doc] for doc in documents]
                 scores = self.rerankModel.predict(pairs)
                 scored_docs = []
                 
-                for (doc_id, doc, metadata, distance, score ) in zip(ids,documents,metadatas,distances,scores):
+                for (doc_id, doc, metadata, vector_score, score ) in zip(ids,documents,metadatas,vector_scores,scores):
                     scored_docs.append({
                             'id':doc_id,
                             'content':doc,
                             'metadata':metadata,
                             'similarity_score':float(score), #From the reranker
-                            'distance':distance
+                            'vector_score':float(vector_score)
                     })
                 scored_docs.sort(key=lambda x:x.get('similarity_score'), reverse = True)
                 

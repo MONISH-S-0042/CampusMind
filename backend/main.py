@@ -48,8 +48,9 @@ def home():
 
 
 @app.get("/chunks")
-def chunks(db:Session = Depends(get_db)):
+def chunks(db:Session = Depends(get_db),collection_name:str = "regulation_documents"):
     data_ingester = DataIngestion(db)
     data_ingester.ingest_data()
     store = get_vector_store()
-    return {"count":store.collection.count()}
+    
+    return {"count":store.client.get_collection(collection_name)}

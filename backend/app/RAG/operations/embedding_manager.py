@@ -1,12 +1,14 @@
+import os
+from dotenv import load_dotenv
 import numpy as np
 from typing import List
 
 from sentence_transformers import SentenceTransformer
-
+load_dotenv()
 
 class EmbeddingManager:
     """Handles the generation of embedding for chunks using SentenceTransformer"""
-    def __init__(self, model_name:str = "google/embeddinggemma-300m"):
+    def __init__(self, model_name:str = os.getenv("EMBEDDING_MODEL")):
         self.model_name=model_name
         self.model=None
         self._load_model()
@@ -32,3 +34,5 @@ embedding_manager = EmbeddingManager()
 
 def get_embedding_manager():
     return embedding_manager
+def get_embedding_model_dimension():
+    return embedding_manager.model.get_embedding_dimension()

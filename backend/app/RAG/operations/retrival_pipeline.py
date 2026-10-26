@@ -103,8 +103,8 @@ def get_chat_bot(llm_name:str):
 
 vector_store = get_vector_store()
 embedding_manager = get_embedding_manager()
-rerankModel = CrossEncoder("BAAI/bge-reranker-base", local_files_only=True)
-llm = get_chat_bot("google_genai:gemini-3.5-flash-lite")
+rerankModel = CrossEncoder(os.getenv("RERANK_MODEL"), local_files_only=True)
+llm = get_chat_bot(os.getenv("CHATBOT_LLM"))
 
 retrival_pipeline = RetrivalPipeline(llm,vector_store, embedding_manager, rerankModel)
 

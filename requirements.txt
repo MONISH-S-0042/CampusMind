@@ -27,3 +27,4 @@ httpx2
 starlette
 itsdangerous
 boto3
+qdrant-client
